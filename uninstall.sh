@@ -47,12 +47,14 @@ if [[ -x "$ACME_SH_HOME/acme.sh" ]]; then
 fi
 rm -rf "$ACME_SH_HOME"
 
-# 4. 卸载 Docker（包 / apt 源 / keyring）
+# 4. 卸载 Docker（包 / apt 源 / keyring / 数据目录）
 echo "== 卸载 Docker =="
 systemctl stop docker 2>/dev/null || true
 systemctl disable docker 2>/dev/null || true
 apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null 2>&1 || true
 rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.asc
+# 清除数据/配置目录（镜像层、卷、网络等，动辄数 GB）
+rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/containerd
 
 # 5. 移除业务数据目录（可用 KEEP_DATA=1 保留）
 if [[ "${KEEP_DATA:-0}" == "1" ]]; then
@@ -62,13 +64,14 @@ else
   rm -rf "$DATA_DIR"
 fi
 
-# 6. 移除部署时生成的 swap（仅当 /swapfile 确由本脚本写入 fstab）
+# 6. 移除部署时生成的 swap 与 swappiness 设置
 if grep -q '^/swapfile ' /etc/fstab 2>/dev/null; then
   echo "== 移除部署生成的 swap =="
   swapoff /swapfile 2>/dev/null || true
   sed -i '\|^/swapfile |d' /etc/fstab
   rm -f /swapfile
 fi
+sed -i '\|^vm.swappiness|d' /etc/sysctl.conf 2>/dev/null || true
 
 # 7. 最后移除部署目录（脚本自身）
 echo "== 移除部署目录：${INSTALL_DIR} =="
