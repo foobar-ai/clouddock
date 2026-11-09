@@ -1,0 +1,22 @@
+# 敏感/本地文件（含密钥与凭证，绝不提交）
+deploy/.env
+deploy/dnsapi.env
+
+# 运行时数据与临时文件
+data/
+tmp/
+*.log
+*.tmp
+*.bak
+
+# 密钥/证书（本地生成，绝不提交）
+*.pem
+*.key
+*.crt
+*.csr
+
+# 编辑器 / IDE
+.DS_Store
+.idea/
+.vscode/
+.codebuddy/

@@ -1,0 +1,48 @@
+# new-api(Supabase PG + Upstash Redis) + magpie 编排：端口仅绑定 127.0.0.1，不暴露公网
+# 数据库(SQL_DSN)与 Redis(REDIS_CONN_STRING) 均走托管服务，由 bootstrap.sh 交互收集写入 deploy/.env
+
+services:
+  new-api:
+    image: calciumion/new-api:latest
+    container_name: new-api
+    restart: on-failure:3
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      TZ: Asia/Shanghai
+      SQL_DSN: "${NEWAPI_SQL_DSN}"
+      REDIS_CONN_STRING: "${NEWAPI_REDIS_CONN_STRING}"
+      SESSION_SECRET: ${NEWAPI_SESSION_SECRET}
+      CRYPTO_SECRET: ${NEWAPI_CRYPTO_SECRET}
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_TRUSTED_URL: "https://${NEWAPI_DOMAIN}"
+      TRUSTED_PROXIES: ${NEWAPI_TRUSTED_PROXIES}
+      # 配额
+      DEFAULT_QUOTA: "10"
+      GLOBAL_USER_QUOTA: "100"
+      # 日志与后台任务
+      ERROR_LOG_ENABLED: "true"
+      BATCH_UPDATE_ENABLED: "false"
+      SYNC_FREQUENCY: "1800"
+    volumes:
+      - /opt/clouddock-data/new-api:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -q 'success' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  magpie:
+    image: ghcr.io/yetone/magpie:latest
+    container_name: magpie
+    restart: on-failure:3
+    ports:
+      - "127.0.0.1:3425:3425"   # 网关（Anthropic/OpenAI 兼容）
+      - "127.0.0.1:3430:3430"   # Web UI
+    environment:
+      TZ: Asia/Shanghai
+      MAGPIE_WEB_KEY: ${MAGPIE_WEB_KEY}
+      MAGPIE_PUBLIC_URL: ${MAGPIE_PUBLIC_URL}
+    volumes:
+      - /opt/clouddock-data/magpie:/config
+    command: ["web", "--addr", "0.0.0.0:3430", "--no-open"]
