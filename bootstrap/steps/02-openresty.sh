@@ -25,9 +25,17 @@ openresty_run() {
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/openresty.gpg] http://openresty.org/package/debian ${codename} openresty" \
     > /etc/apt/sources.list.d/openresty.list
 
-  log "安装 OpenResty..."
+  log "安装 OpenResty（固定版本，见下方说明）..."
   apt-get update -y
-  apt-get install -y openresty
+  # 固定到 OpenSSL 3.0 时代的稳定版：openresty.org 的 bookworm 新包（1.31.x）在
+  # OpenSSL 3.2/3.5 环境编译，与 Debian 12 的 libssl3(3.0) 不兼容，会导致 nginx 起不来。
+  # 用 apt-mark hold 锁定，避免 apt upgrade 时被升回不兼容版本。
+  OPENRESTY_VER="${OPENRESTY_VER:-1.27.1.2-1~bookworm1}"
+  apt-get install -y \
+    "openresty=${OPENRESTY_VER}" \
+    "openresty-opm=${OPENRESTY_VER}" \
+    "openresty-resty=${OPENRESTY_VER}"
+  apt-mark hold openresty openresty-opm openresty-resty
 
   log "创建目录结构..."
   mkdir -p /var/www/acme "$CERT_DIR" "$OPENRESTY_SITES_DIR"

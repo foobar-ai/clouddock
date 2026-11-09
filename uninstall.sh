@@ -35,8 +35,9 @@ echo "== 卸载 OpenResty =="
 systemctl disable --now openresty 2>/dev/null || true
 systemctl stop openresty 2>/dev/null || true
 rm -f /etc/apt/sources.list.d/openresty.list /etc/apt/keyrings/openresty.gpg
-# 必须 purge：注销 conffile，否则重装时 dpkg 不会恢复被删的 mime.types 等配置文件
-apt-get purge -y openresty >/dev/null 2>&1 || true
+# 先解锁版本锁定，再 purge；purge 注销 conffile，否则重装时 dpkg 不会恢复被删的 mime.types 等配置文件
+apt-mark unhold openresty openresty-opm openresty-resty >/dev/null 2>&1 || true
+apt-get purge -y openresty openresty-opm openresty-resty >/dev/null 2>&1 || true
 rm -rf /usr/local/openresty "$OPENRESTY_PREFIX" /var/www/acme "$CERT_DIR"
 
 # 3. 卸载 acme.sh（含自动续期 cron）
