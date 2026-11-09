@@ -18,6 +18,8 @@
 
 ## 前置条件
 
+> 还没有云主机？华为云国际版 Flexus L 实例：[产品介绍](https://www.huaweicloud.com/intl/zh-cn/product/flexus-l.html) · [立即购买](https://console-intl.huaweicloud.com/smb/?locale=zh-cn#/create)（本项目验证环境为新加坡区域）
+
 1. 云主机：Debian 12（已在华为云 Flexus L 验证），可 SSH 登录（root 或 sudo 用户）。
 2. 安全组/防火墙放行：**22 / 80 / 443**（80/443 用于证书签发与 HTTPS）。
 3. 域名：A 记录已解析到云主机公网 IP（HTTP-01 证书方式必需）。
