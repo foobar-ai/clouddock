@@ -18,7 +18,7 @@
 
 ## 前置条件
 
-> 还没有云主机？华为云国际版 Flexus L 实例：[产品介绍](https://www.huaweicloud.com/intl/zh-cn/product/flexus-l.html) · [立即购买](https://console-intl.huaweicloud.com/smb/?locale=zh-cn#/create)（本项目验证环境为新加坡区域）
+> 还没有云主机？华为云国际版 Flexus L 实例：[产品介绍](https://www.huaweicloud.com/intl/zh-cn/product/flexus-l.html) · [立即购买](https://console.huaweicloud.com/smb/v2/?region=cn-east-3#/create/hecs-light?image_name=Debian&plan=basic_v13&resource_spec_code=ahf.large.025.30m.linux&period=month_9)（本项目验证环境为新加坡区域）
 
 1. 云主机：Debian 12（已在华为云 Flexus L 验证），可 SSH 登录（root 或 sudo 用户）。
 2. 安全组/防火墙放行：**22 / 80 / 443**（80/443 用于证书签发与 HTTPS）。
@@ -30,12 +30,12 @@
 SSH 登录云主机（`ssh root@<地址>`），然后以 root 执行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<你的用户名>/<你的仓库>/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh | bash
 ```
 
-> 未 fork 前，可先 clone 后指定仓库地址：
+> fork 后自用，可指定自己的仓库地址：
 > ```bash
-> curl -fsSL <install.sh 的 raw 地址> | REPO_URL=https://github.com/<用户名>/<仓库>.git bash
+> curl -fsSL <install.sh 的 raw 地址> | REPO_URL=https://github.com/<你的用户名>/clouddock.git bash
 > ```
 
 脚本会**交互询问**以下配置（均为用户输入，请提前准备；其余密钥由脚本自动生成）：
@@ -124,3 +124,4 @@ clouddock/
 - 架构说明：见 `docs/architecture.md`。
 - 本地 Claude Code 接入：见 `docs/claude-code-local.md`。
 - 新增服务：见 `docs/add-service.md`。
+- 项目计划（设计决策与背景）：见 `docs/plan.md`。

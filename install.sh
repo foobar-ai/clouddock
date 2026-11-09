@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # install.sh — 开源安装入口（curl | bash）
 # 用法（在 VPS 上以 root 执行）：
-#   curl -fsSL https://raw.githubusercontent.com/<user>/<repo>/main/install.sh | bash
-# 或指定仓库：
+#   curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh | bash
+# 或指定仓库（如 fork 后自用）：
 #   curl -fsSL <raw-install-url> | REPO_URL=https://github.com/<user>/<repo>.git bash
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/YOUR_USER/clouddock.git}"
+REPO_URL="${REPO_URL:-https://github.com/foobar-ai/clouddock.git}"
 BRANCH="${BRANCH:-main}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/clouddock}"
 
