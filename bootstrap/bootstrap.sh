@@ -14,19 +14,31 @@ require_root
 require_debian12
 log "项目根目录：${DEPLOY_DIR}"
 
-# ---------- 交互收集配置（幂等：已写入 .env 则沿用，重跑不重复询问） ----------
+# ---------- 交互收集配置 ----------
+# 取值优先级：.env 已有值 > shell 环境变量（无交互场景，如 curl | VAR=x bash）> 交互询问。
+# 所有值最终写入 .env，重跑幂等不重复询问。
 collect_config() {
   local v
 
   if [[ -z "$(env_get NEWAPI_DOMAIN 2>/dev/null || true)" ]]; then
-    read -rp "new-api 对外域名（如 api.example.com）: " v
+    if [[ -n "${NEWAPI_DOMAIN:-}" ]]; then
+      log "使用环境变量 NEWAPI_DOMAIN=${NEWAPI_DOMAIN}"
+      v="$NEWAPI_DOMAIN"
+    else
+      read -rp "new-api 对外域名（如 api.example.com）: " v
+    fi
     [[ -n "$v" ]] || die "域名不能为空（用于 HTTPS 证书与反代）。"
     env_set NEWAPI_DOMAIN "$v"
   fi
 
   if [[ -z "$(env_get CERT_MODE 2>/dev/null || true)" ]]; then
-    echo "证书验证方式：http = HTTP-01（推荐，需域名 A 记录已解析到本 VPS 且安全组放行 80/443）；dns = DNS API"
-    read -rp "证书验证方式 [http]: " v
+    if [[ -n "${CERT_MODE:-}" ]]; then
+      log "使用环境变量 CERT_MODE=${CERT_MODE}"
+      v="$CERT_MODE"
+    else
+      echo "证书验证方式：http = HTTP-01（推荐，需域名 A 记录已解析到本 VPS 且安全组放行 80/443）；dns = DNS API"
+      read -rp "证书验证方式 [http]: " v
+    fi
     v="${v:-http}"
     case "$v" in
       http|dns) ;;
@@ -36,19 +48,34 @@ collect_config() {
   fi
 
   if [[ -z "$(env_get TRAFFIC_QUOTA_GB 2>/dev/null || true)" ]]; then
-    read -rp "月流量包额度 GB [1024]: " v
+    if [[ -n "${TRAFFIC_QUOTA_GB:-}" ]]; then
+      log "使用环境变量 TRAFFIC_QUOTA_GB=${TRAFFIC_QUOTA_GB}"
+      v="$TRAFFIC_QUOTA_GB"
+    else
+      read -rp "月流量包额度 GB [1024]: " v
+    fi
     v="${v:-1024}"
     env_set TRAFFIC_QUOTA_GB "$v"
   fi
 
   if [[ -z "$(env_get NEWAPI_SQL_DSN 2>/dev/null || true)" ]]; then
-    read -rp "Supabase PostgreSQL 连接串（postgresql://postgres.xxx:password@host:5432/postgres）: " v
+    if [[ -n "${NEWAPI_SQL_DSN:-}" ]]; then
+      log "使用环境变量 NEWAPI_SQL_DSN（值不回显）"
+      v="$NEWAPI_SQL_DSN"
+    else
+      read -rp "Supabase PostgreSQL 连接串（postgresql://postgres.xxx:password@host:5432/postgres）: " v
+    fi
     [[ -n "$v" ]] || die "SQL_DSN 不能为空（new-api 需要数据库）。"
     env_set NEWAPI_SQL_DSN "$v"
   fi
 
   if [[ -z "$(env_get NEWAPI_REDIS_CONN_STRING 2>/dev/null || true)" ]]; then
-    read -rp "Upstash Redis 连接串（rediss://:password@host:6379，回车跳过=不使用）: " v
+    if [[ -n "${NEWAPI_REDIS_CONN_STRING:-}" ]]; then
+      log "使用环境变量 NEWAPI_REDIS_CONN_STRING（值不回显）"
+      v="$NEWAPI_REDIS_CONN_STRING"
+    else
+      read -rp "Upstash Redis 连接串（rediss://:password@host:6379，回车跳过=不使用）: " v
+    fi
     if [[ -n "$v" ]]; then
       env_set NEWAPI_REDIS_CONN_STRING "$v"
     else
@@ -58,7 +85,12 @@ collect_config() {
 
   if [[ "$(env_get CERT_MODE)" == "dns" ]]; then
     if [[ -z "$(env_get DNS_PROVIDER 2>/dev/null || true)" ]]; then
-      read -rp "acme.sh DNS API 标识（如 dns_dp / dns_cf / dns_ali）: " v
+      if [[ -n "${DNS_PROVIDER:-}" ]]; then
+        log "使用环境变量 DNS_PROVIDER=${DNS_PROVIDER}"
+        v="$DNS_PROVIDER"
+      else
+        read -rp "acme.sh DNS API 标识（如 dns_dp / dns_cf / dns_ali）: " v
+      fi
       [[ -n "$v" ]] || die "DNS 模式需提供 acme.sh DNS API 标识。"
       env_set DNS_PROVIDER "$v"
     fi

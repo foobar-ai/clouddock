@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 
 脚本会**交互询问**以下配置（均为用户输入，请提前准备；其余密钥由脚本自动生成）：
 
-| 环境变量 | 用途 | 是否必填 |
+| 配置项 | 用途 | 是否必填 |
 | --- | --- | --- |
 | `NEWAPI_DOMAIN` | new-api 对外域名（HTTPS 证书 + 反代，建议子域名如 `api.xxx.com`） | 必填 |
 | `CERT_MODE` | 证书验证方式：`http`（HTTP-01，推荐）/ `dns`（DNS API） | 默认 `http` |
@@ -51,9 +51,40 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 
 > `CERT_MODE=dns` 时，还需在 VPS 的 `deploy/dnsapi.env` 写入 DNS API 凭证（每行一条 `export KEY=VALUE`）。
 
+### 无交互部署（可选）
+
+不想逐项回答交互提问时，可把上表配置项作为**环境变量**随 `curl | bash` 传入，实现一条命令一步到位：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh | \
+  NEWAPI_DOMAIN=api.xxx.com \
+  CERT_MODE=http \
+  TRAFFIC_QUOTA_GB=1024 \
+  NEWAPI_SQL_DSN='postgresql://postgres.xxx:password@host:5432/postgres' \
+  NEWAPI_REDIS_CONN_STRING='rediss://:password@host:6379' \
+  bash
+```
+
+全部必填项都通过环境变量提供时**全程零询问**；缺了哪项就只对缺的那项交互询问（在 SSH 会话中仍可正常输入）。
+
+取值优先级为：**`deploy/.env` 已有值 > shell 环境变量 > 交互询问**。所有值最终都会写入 `deploy/.env`，因此重跑安装脚本时不会再重复询问（幂等），临时改配置可在 VPS 上直接编辑 `/opt/clouddock/deploy/.env`。
+
+> 安全提示：连接串含密钥，会进入进程环境变量与 shell 历史。仅建议在个人 root VPS 上使用；更在意痕迹可用预置 `.env` 方式——先 `git clone` 仓库到 VPS，手动写好 `deploy/.env`（该文件被 `.gitignore` 忽略），再执行 `bash /opt/clouddock/bootstrap/bootstrap.sh`。
+
 随后自动完成：系统准备 → Docker → OpenResty → 证书签发 → 启动服务 → 启用 HTTPS。
 
 > 重复执行安全：各阶段幂等，命中「已就绪」即跳过；密钥已生成则保留不覆盖。
+
+## 卸载
+
+在 VPS 以 root 执行一键卸载脚本，恢复到部署前状态：
+
+```bash
+bash /opt/clouddock/uninstall.sh              # 卸载全部，含数据目录 /opt/clouddock-data 与部署生成的 swap
+KEEP_DATA=1 bash /opt/clouddock/uninstall.sh  # 保留业务数据目录（new-api 数据库 / magpie 配置）
+```
+
+会移除：OpenResty、Docker、acme.sh、证书、容器与镜像、部署目录 `/opt/clouddock`；保留 `curl`/`git`/`vnstat` 等非 clouddock 专属的系统工具，不影响重装。
 
 ## 安全建议
 

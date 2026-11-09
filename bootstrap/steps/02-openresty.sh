@@ -41,7 +41,10 @@ openresty_run() {
 
   log "校验并启动 OpenResty..."
   openresty -t || die "OpenResty 配置校验失败。"
-  systemctl enable --now openresty 2>/dev/null || service openresty start || true
+  # 必须 restart 而非 enable --now：apt 装包时可能已自启（仍是默认配置），
+  # enable --now 见服务已 active 不会重载，导致新配置不生效。
+  systemctl enable openresty 2>/dev/null || true
+  systemctl restart openresty 2>/dev/null || service openresty restart || true
   ok "OpenResty 已安装并启动（HTTP 阶段）。"
 }
 
