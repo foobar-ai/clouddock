@@ -121,5 +121,6 @@ clouddock/
 
 ## 文档
 
+- 架构说明：见 `docs/architecture.md`。
 - 本地 Claude Code 接入：见 `docs/claude-code-local.md`。
 - 新增服务：见 `docs/add-service.md`。
