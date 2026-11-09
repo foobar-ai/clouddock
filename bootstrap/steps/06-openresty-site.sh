@@ -21,7 +21,7 @@ site_run() {
 
   log "渲染 HTTPS 站点配置（域名 ${DOMAIN}）..."
   sed "s/__DOMAIN__/${DOMAIN}/g" \
-    "$DEPLOY_DIR/deploy/openresty/new-api-https.conf" \
+    "$DEPLOY_DIR/openresty/sites/new-api-https.conf" \
     > "$OPENRESTY_SITES_DIR/new-api.conf"
 
   log "校验并重载 OpenResty..."

@@ -6,7 +6,7 @@
 # ---------- 路径常量 ----------
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/clouddock}"                 # 远端项目根目录
 ENV_FILE="$DEPLOY_DIR/deploy/.env"                        # 环境文件（含用户输入与自动生成密钥）
-COMPOSE_FILE="$DEPLOY_DIR/deploy/docker-compose.yml"
+COMPOSE_DIR="$DEPLOY_DIR/services"                           # 服务目录：每个 services/<name>/compose.yml
 DATA_DIR="/opt/clouddock-data"                             # 数据目录（独立于代码目录，代码更新不覆盖）：new-api /data 与 magpie /config
 OPENRESTY_PREFIX="/usr/local/openresty/nginx"             # OpenResty 官方 apt 安装前缀
 OPENRESTY_CONF_DIR="$OPENRESTY_PREFIX/conf"

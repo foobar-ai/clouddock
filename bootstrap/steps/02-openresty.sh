@@ -36,8 +36,8 @@ openresty_run() {
   if [[ -f "$OPENRESTY_CONF_DIR/nginx.conf" ]]; then
     cp -a "$OPENRESTY_CONF_DIR/nginx.conf" "$OPENRESTY_CONF_DIR/nginx.conf.bak.$(date +%s)" || true
   fi
-  cp "$DEPLOY_DIR/deploy/openresty/nginx.conf" "$OPENRESTY_CONF_DIR/nginx.conf"
-  cp "$DEPLOY_DIR/deploy/openresty/new-api-http.conf" "$OPENRESTY_SITES_DIR/new-api.conf"
+  cp "$DEPLOY_DIR/openresty/nginx.conf" "$OPENRESTY_CONF_DIR/nginx.conf"
+  cp "$DEPLOY_DIR/openresty/sites/new-api-http.conf" "$OPENRESTY_SITES_DIR/new-api.conf"
 
   log "校验并启动 OpenResty..."
   openresty -t || die "OpenResty 配置校验失败。"

@@ -73,12 +73,22 @@ clouddock/
 │       ├── 02-openresty.sh
 │       ├── 03-acme.sh
 │       ├── 04-cert.sh
-│       ├── 05-services.sh
+│       ├── 05-services.sh         #   聚合启动所有服务
 │       └── 06-openresty-site.sh
-├── deploy/                        # 服务编排与配置
-│   ├── docker-compose.yml         #   new-api + magpie 编排（PG/Redis 走 Supabase/Upstash 托管）
-│   ├── .env.example               #   环境变量模板
-│   └── openresty/                 #   反代站点配置（HTTP 校验阶段 / HTTPS 代理阶段）
+├── services/                      # 服务定义（每服务一目录，可扩展）
+│   ├── new-api/
+│   │   ├── compose.yml            #   new-api 编排（Supabase + Upstash）
+│   │   └── deploy.sh              #   就绪检查
+│   └── magpie/
+│       ├── compose.yml            #   magpie 编排
+│       └── deploy.sh              #   就绪检查 + gateway key
+├── deploy/                        # 配置
+│   └── .env.example               #   环境变量模板
+├── openresty/                     # 反代配置
+│   ├── nginx.conf                 #   OpenResty 主配置
+│   └── sites/                     #   站点配置
+│       ├── new-api-http.conf      #   HTTP 校验阶段
+│       └── new-api-https.conf     #   HTTPS 代理阶段
 ├── scripts/                       # 本地辅助脚本
 │   └── claude-code-tunnel.sh      #   本地 SSH 隧道（链路 A）
 └── docs/
