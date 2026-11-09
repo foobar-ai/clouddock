@@ -1,6 +1,6 @@
-# clouddock — 云主机一键 AI 网关栈
+# clouddock — 云主机一键 DIY AI 云环境
 
-把一台 Debian 12 云主机锻造成个人 AI 网关栈：一键完成系统准备、Docker、HTTPS 网关、new-api 与 magpie 部署，并打通本地 Claude Code 经 magpie 调用的双链路。当前已在华为云 Flexus L 上验证。
+把一台 Debian 12 云主机锻造成个人 AI 云环境：一键完成系统准备、Docker、HTTPS 网关、new-api 与 magpie 部署，并打通本地 Claude Code 经 magpie 调用的双链路。当前已在华为云 Flexus L 上验证。
 
 项目开源，通过 `curl | bash` 一条命令在 VPS 上完成部署，不依赖本地操作系统与 `rsync` 等工具（Windows 也可用）。
 
