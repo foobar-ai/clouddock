@@ -35,8 +35,9 @@ echo "== 卸载 OpenResty =="
 systemctl disable --now openresty 2>/dev/null || true
 systemctl stop openresty 2>/dev/null || true
 rm -f /etc/apt/sources.list.d/openresty.list /etc/apt/keyrings/openresty.gpg
-apt-get remove -y openresty >/dev/null 2>&1 || true
-rm -rf "$OPENRESTY_PREFIX" /var/www/acme "$CERT_DIR"
+# 必须 purge：注销 conffile，否则重装时 dpkg 不会恢复被删的 mime.types 等配置文件
+apt-get purge -y openresty >/dev/null 2>&1 || true
+rm -rf /usr/local/openresty "$OPENRESTY_PREFIX" /var/www/acme "$CERT_DIR"
 
 # 3. 卸载 acme.sh（含自动续期 cron）
 echo "== 卸载 acme.sh =="
@@ -49,7 +50,7 @@ rm -rf "$ACME_SH_HOME"
 echo "== 卸载 Docker =="
 systemctl stop docker 2>/dev/null || true
 systemctl disable docker 2>/dev/null || true
-apt-get remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null 2>&1 || true
+apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null 2>&1 || true
 rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.asc
 
 # 5. 移除业务数据目录（可用 KEEP_DATA=1 保留）
