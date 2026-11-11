@@ -40,6 +40,16 @@ require_debian12() {
 # ---------- 工具判断 ----------
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# ---------- 服务清单 ----------
+# 列出所有 services/*/compose.yml 声明的 container_name
+svc_names() {
+  local f
+  for f in "$COMPOSE_DIR"/*/compose.yml; do
+    [[ -f "$f" ]] || continue
+    sed -nE 's/^[[:space:]]*container_name:[[:space:]]*"?([A-Za-z0-9_-]+)"?[[:space:]]*$/\1/p' "$f"
+  done
+}
+
 # ---------- .env 读写 ----------
 # env 文件行格式：KEY=value（值不含空格/换行/特殊 shell 字符，域名与随机密钥均满足）
 env_file_exists() { [[ -f "$ENV_FILE" ]]; }

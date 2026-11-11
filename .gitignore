@@ -1,6 +1,7 @@
 # 敏感/本地文件（含密钥与凭证，绝不提交）
 deploy/.env
 deploy/dnsapi.env
+.clouddock/
 
 # 运行时数据与临时文件
 data/

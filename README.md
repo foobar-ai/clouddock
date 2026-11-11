@@ -148,6 +148,19 @@ KEEP_DATA=1 bash /opt/clouddock/uninstall.sh  # 保留业务数据目录（new-a
 
 会移除：OpenResty、Docker、acme.sh、证书、容器与镜像、部署目录 `/opt/clouddock`；保留 `curl`/`git`/`vnstat` 等非 clouddock 专属的系统工具，不影响重装。
 
+## AI 运维（可选）
+
+部署完成后，可让 AI（Claude Code / CodeBuddy）通过专用 SSH 白名单通道安全地执行运维（状态巡检 / 证书续期与切换 / 升级 / 重启与日志 / 安装新服务）：
+
+```bash
+# 本地仓库一次性初始化：生成专用 key + 推送白名单 + 装定时巡检
+bash scripts/install-ops.sh <VPS地址>
+# 之后 AI 即可自然语言触发，底层调用：
+bash scripts/clouddock-ops-ssh.sh status
+```
+
+详见 `docs/ai-ops.md`（命令参考 / 安全模型）与 `skills/clouddock-ops/SKILL.md`（AI 调用约定）。
+
 ## 安全建议
 
 1. **公网最小暴露**：安全组仅放行 22 / 80 / 443；magpie 的 3425/3430 只绑定 127.0.0.1，经 SSH 隧道访问，不暴露公网。
@@ -159,8 +172,10 @@ KEEP_DATA=1 bash /opt/clouddock/uninstall.sh  # 保留业务数据目录（new-a
 ```
 clouddock/
 ├── install.sh                     # curl | bash 入口（clone 仓库 + 执行 bootstrap）
+├── uninstall.sh                   # 一键卸载
+├── clouddock                      # AI 运维 CLI 主入口（status/renew/upgrade/...）
 ├── bootstrap/                     # 部署编排
-│   ├── lib.sh                     #   公共函数库
+│   ├── lib.sh                     #   公共函数库（含 svc_names）
 │   ├── bootstrap.sh               #   总控：交互收集 + 生成密钥 + 调度阶段
 │   └── steps/                     #   阶段脚本（幂等）
 │       ├── 00-prereq.sh           #   系统准备 / vnstat / swap
@@ -170,6 +185,13 @@ clouddock/
 │       ├── 04-cert.sh
 │       ├── 05-services.sh         #   聚合启动所有服务
 │       └── 06-openresty-site.sh
+├── ops/                           # 运维脚本（clouddock 子命令实现）
+│   ├── lib.sh                     #   运维公共库（JSON/脱敏）
+│   ├── shell.sh                   #   SSH 白名单受限入口
+│   ├── status.sh / health.sh      #   状态巡检 / 健康快照
+│   ├── renew.sh / upgrade.sh      #   续期 / 升级
+│   ├── apply.sh / restart.sh / logs.sh
+│   └── cron-install.sh            #   定时巡检安装
 ├── services/                      # 服务定义（每服务一目录，可扩展）
 │   ├── new-api/
 │   │   ├── compose.yml            #   new-api 编排（Supabase + Upstash）
@@ -185,10 +207,15 @@ clouddock/
 │       ├── new-api-http.conf      #   HTTP 校验阶段
 │       └── new-api-https.conf     #   HTTPS 代理阶段
 ├── scripts/                       # 本地辅助脚本
-│   └── claude-code-tunnel.sh      #   本地 SSH 隧道（链路 A）
+│   ├── claude-code-tunnel.sh      #   本地 SSH 隧道（链路 A）
+│   ├── add-service.sh             #   新服务脚手架
+│   ├── install-ops.sh             #   一键打通 AI 运维白名单通道
+│   └── clouddock-ops-ssh.sh       #   本地调用 wrapper
+├── skills/clouddock-ops/SKILL.md  # Agent Skill（AI 运维调用约定）
 └── docs/
     ├── claude-code-local.md       # 本地 Claude Code 双链路接入说明
-    └── add-service.md             # 新增服务指南
+    ├── add-service.md             # 新增服务指南
+    └── ai-ops.md                  # AI 运维指南
 ```
 
 ## 成本与流量管控
@@ -217,4 +244,5 @@ clouddock/
 - 架构说明：见 `docs/architecture.md`。
 - 本地 Claude Code 接入：见 `docs/claude-code-local.md`。
 - 新增服务：见 `docs/add-service.md`。
+- AI 运维：见 `docs/ai-ops.md`（及 `skills/clouddock-ops/SKILL.md`）。
 - 项目计划（设计决策与背景）：见 `docs/plan.md`。

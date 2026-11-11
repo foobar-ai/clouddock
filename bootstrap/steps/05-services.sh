@@ -9,12 +9,14 @@ source "$SCRIPT_DIR/../lib.sh"
 require_root
 
 services_done() {
-  local running
-  running="$(docker ps --format '{{.Names}}' 2>/dev/null || true)"
-  if grep -qx 'new-api' <<< "$running" && grep -qx 'magpie' <<< "$running"; then
-    return 0
-  fi
-  return 1
+  local c
+  # 以所有 services/*/compose.yml 声明的容器为准：全部 running 才算就绪
+  # （否则新增服务后仍会误判「已就绪」而跳过启动）
+  [[ -n "$(svc_names)" ]] || return 1
+  for c in $(svc_names); do
+    [[ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" == "true" ]] || return 1
+  done
+  return 0
 }
 
 # 构建所有服务的 compose -f 参数列表

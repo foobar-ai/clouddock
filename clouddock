@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# clouddock — AI 运维 CLI 主入口（在 VPS 以 root 运行，或经 ops/shell.sh 白名单调用）
+# 子命令：status health renew reissue upgrade apply restart logs
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export DEPLOY_DIR="$SCRIPT_DIR"
+# shellcheck source=ops/lib.sh
+source "$SCRIPT_DIR/ops/lib.sh"
+
+usage() {
+  cat <<'EOF'
+用法: clouddock <子命令> [参数]
+
+子命令：
+  status                状态巡检（容器/证书/流量/磁盘/git），JSON 输出
+  health                执行巡检并写 /opt/clouddock-data/health.json
+  renew                 续期证书（acme.sh --cron）
+  reissue               强制重签（切换验证方式 http↔dns 用）
+  upgrade               git pull + 幂等重放 bootstrap（含新服务落地）
+  apply                 聚合 compose up -d（不走就绪跳过）
+  restart <svc|all>     重启指定服务
+  logs <svc> [--tail=N] 查看服务日志（默认 200 行）
+EOF
+}
+
+cmd="${1:-}"
+[[ -n "$cmd" ]] || { usage; exit 2; }
+shift || true
+
+case "$cmd" in
+  status)   bash "$SCRIPT_DIR/ops/status.sh" "$@" ;;
+  health)   bash "$SCRIPT_DIR/ops/health.sh" "$@" ;;
+  renew)    bash "$SCRIPT_DIR/ops/renew.sh" "$@" ;;
+  reissue)  CERT_FORCE=1 bash "$SCRIPT_DIR/bootstrap/steps/04-cert.sh" "$@" ;;
+  upgrade)  bash "$SCRIPT_DIR/ops/upgrade.sh" "$@" ;;
+  apply)    bash "$SCRIPT_DIR/ops/apply.sh" "$@" ;;
+  restart)  bash "$SCRIPT_DIR/ops/restart.sh" "$@" ;;
+  logs)     bash "$SCRIPT_DIR/ops/logs.sh" "$@" ;;
+  *)        usage >&2; exit 2 ;;
+esac
