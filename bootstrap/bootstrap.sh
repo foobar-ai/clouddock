@@ -70,9 +70,10 @@ collect_config() {
   fi
 
   if [[ -z "$(env_get NEWAPI_REDIS_CONN_STRING 2>/dev/null || true)" ]]; then
-    if [[ -n "${NEWAPI_REDIS_CONN_STRING:-}" ]]; then
-      log "使用环境变量 NEWAPI_REDIS_CONN_STRING（值不回显）"
+    # 显式传入（含空串=不使用 Redis）则跳过询问；未传入才交互询问
+    if [[ "${NEWAPI_REDIS_CONN_STRING+x}" == "x" ]]; then
       v="$NEWAPI_REDIS_CONN_STRING"
+      [[ -n "$v" ]] && log "使用环境变量 NEWAPI_REDIS_CONN_STRING（值不回显）"
     else
       read -rp "Upstash Redis 连接串（rediss://:password@host:6379，回车跳过=不使用）: " v
     fi

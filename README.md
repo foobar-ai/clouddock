@@ -65,7 +65,7 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
   bash
 ```
 
-全部必填项都通过环境变量提供时**全程零询问**；缺了哪项就只对缺的那项交互询问（在 SSH 会话中仍可正常输入）。
+所有会询问的配置项（含 `TRAFFIC_QUOTA_GB`、`NEWAPI_REDIS_CONN_STRING`）都通过环境变量提供时**全程零询问**；缺了哪项就只对缺的那项交互询问（在 SSH 会话中仍可正常输入）。`NEWAPI_REDIS_CONN_STRING` 传空串 `''` 表示「不使用 Redis」，也会干净跳过询问。
 
 取值优先级为：**`deploy/.env` 已有值 > shell 环境变量 > 交互询问**。所有值最终都会写入 `deploy/.env`，因此重跑安装脚本时不会再重复询问（幂等），临时改配置可在 VPS 上直接编辑 `/opt/clouddock/deploy/.env`。
 
@@ -85,7 +85,9 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
   CERT_MODE=dns \
   DNS_PROVIDER=dns_cf \
   DNS_API_ENV=$'export CF_Token=你的API_Token\nexport CF_Account_ID=你的Account_ID\nexport CF_Zone_ID=你的Zone_ID' \
+  TRAFFIC_QUOTA_GB=1024 \
   NEWAPI_SQL_DSN='postgresql://...' \
+  NEWAPI_REDIS_CONN_STRING='' \
   bash
 ```
 
@@ -99,7 +101,9 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh | \
   NEWAPI_DOMAIN=api.xxx.com \
   CERT_MODE=http \
+  TRAFFIC_QUOTA_GB=1024 \
   NEWAPI_SQL_DSN='postgresql://...' \
+  NEWAPI_REDIS_CONN_STRING='' \
   bash
 ```
 
