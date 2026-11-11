@@ -95,11 +95,17 @@ collect_config() {
       env_set DNS_PROVIDER "$v"
     fi
     if [[ ! -f "$DEPLOY_DIR/deploy/dnsapi.env" ]]; then
-      warn "DNS 模式需在 ${DEPLOY_DIR}/deploy/dnsapi.env 写入凭证（每行一条 export KEY=VALUE，例如："
-      warn "  export DP_Id=xxx"
-      warn "  export DP_Key=yyy"
-      warn "）。请准备该文件后重新运行本脚本。"
-      exit 1
+      # 无交互场景：可用 DNS_API_ENV 环境变量直接写入凭证文件（内容为多行 export KEY=VALUE）
+      if [[ -n "${DNS_API_ENV:-}" ]]; then
+        log "使用环境变量 DNS_API_ENV 写入 ${DEPLOY_DIR}/deploy/dnsapi.env"
+        printf '%s\n' "$DNS_API_ENV" > "$DEPLOY_DIR/deploy/dnsapi.env"
+      else
+        warn "DNS 模式需在 ${DEPLOY_DIR}/deploy/dnsapi.env 写入凭证（每行一条 export KEY=VALUE，例如："
+        warn "  export DP_Id=xxx"
+        warn "  export DP_Key=yyy"
+        warn "）。或通过环境变量 DNS_API_ENV 传入（无交互部署）。"
+        exit 1
+      fi
     fi
   fi
 

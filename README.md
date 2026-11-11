@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 | `NEWAPI_REDIS_CONN_STRING` | Upstash Redis 连接串（`rediss://...`） | 可选（留空用内存缓存） |
 | `DNS_PROVIDER` | acme.sh DNS API 标识（如 `dns_dp` / `dns_cf`） | 仅 `CERT_MODE=dns` 必填 |
 
-> `CERT_MODE=dns` 时，还需在 VPS 的 `deploy/dnsapi.env` 写入 DNS API 凭证（每行一条 `export KEY=VALUE`）。
+> `CERT_MODE=dns` 时，还需在 VPS 的 `deploy/dnsapi.env` 写入 DNS API 凭证（每行一条 `export KEY=VALUE`）；无交互部署可直接用环境变量 `DNS_API_ENV` 传入（见下文「证书与 Cloudflare 代理」）。
 
 ### 无交互部署（可选）
 
@@ -70,6 +70,40 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 取值优先级为：**`deploy/.env` 已有值 > shell 环境变量 > 交互询问**。所有值最终都会写入 `deploy/.env`，因此重跑安装脚本时不会再重复询问（幂等），临时改配置可在 VPS 上直接编辑 `/opt/clouddock/deploy/.env`。
 
 > 安全提示：连接串含密钥，会进入进程环境变量与 shell 历史。仅建议在个人 root VPS 上使用；更在意痕迹可用预置 `.env` 方式——先 `git clone` 仓库到 VPS，手动写好 `deploy/.env`（该文件被 `.gitignore` 忽略），再执行 `bash /opt/clouddock/bootstrap/bootstrap.sh`。
+
+### 证书与 Cloudflare 代理（小黄云）
+
+若域名开启了 Cloudflare 代理（橙云），HTTP-01 的签发与**自动续期**都会被 CF 边缘节点拦截：只要开了「Always Use HTTPS / Automatic HTTPS Rewrites」，HTTP 验证请求会被 301 到 HTTPS，导致验证失败。两种处理方式：
+
+**方案 A（推荐）：DNS-01 验证，橙云随便开**
+
+DNS 验证不碰 80 端口、不受 CF 代理影响，续期永远不受干扰。无交互部署：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh | \
+  NEWAPI_DOMAIN=api.xxx.com \
+  CERT_MODE=dns \
+  DNS_PROVIDER=dns_cf \
+  DNS_API_ENV=$'export CF_Token=你的API_Token\nexport CF_Account_ID=你的Account_ID\nexport CF_Zone_ID=你的Zone_ID' \
+  NEWAPI_SQL_DSN='postgresql://...' \
+  bash
+```
+
+> `dns_cf` 也支持全局密钥方式（`CF_Key` + `CF_Email`）；其他 DNS 服务商把 `DNS_PROVIDER` 换成对应标识、`DNS_API_ENV` 换成对应的 `export KEY=VALUE` 多行即可（如 `dns_dp` 用 `DP_Id`/`DP_Key`）。
+
+**方案 B：保持 HTTP-01，关掉 CF 的强制 HTTPS**
+
+先在 Cloudflare → SSL/TLS → Edge Certificates 关闭 Always Use HTTPS 与 Automatic HTTPS Rewrites，再按普通 HTTP-01 无交互部署（证书续期沿用同一验证路径，故该开关需**一直保持关闭**）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh | \
+  NEWAPI_DOMAIN=api.xxx.com \
+  CERT_MODE=http \
+  NEWAPI_SQL_DSN='postgresql://...' \
+  bash
+```
+
+> 橙云下存在两套证书：客户端看的是 CF 自签的 Universal SSL，acme.sh 管的是 CF↔源站之间的源站证书（此时 CF 的 SSL/TLS 模式需设为 `Full (strict)`）。源站证书续期失败不会立刻暴露，但到期后会埋雷，建议方案 A 一劳永逸。
 
 随后自动完成：系统准备 → Docker → OpenResty → 证书签发 → 启动服务 → 启用 HTTPS。
 
@@ -147,7 +181,7 @@ clouddock/
 ## 常见问题
 
 - **Docker 拉取慢**：新加坡直连官方 registry 通常够快，默认不配第三方加速。若实测异常，优先重试（断点续传）；仍不行可考虑云厂商官方镜像加速（如华为云 SWR 个人版，有免费额度）。
-- **HTTP-01 证书签发失败**：确认域名 A 记录已解析到云主机、安全组放行 80/443；仍失败可改用 DNS API 方式（`CERT_MODE=dns` + `deploy/dnsapi.env`）。
+- **HTTP-01 证书签发失败**：确认域名 A 记录已解析到云主机、安全组放行 80/443；若开了 Cloudflare 橙云，见上文「证书与 Cloudflare 代理」；仍失败可改用 DNS API 方式（`CERT_MODE=dns` + `deploy/dnsapi.env`）。
 - **重跑是否安全**：各阶段幂等，命中「已就绪」即跳过；密钥已生成则保留不覆盖。
 
 ## 文档
