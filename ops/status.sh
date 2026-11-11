@@ -63,6 +63,8 @@ for line in env('OPS_CONTAINERS').splitlines():
     containers.append({"name": name, "state": state, "health": health})
 
 # traffic (vnstat --json m)
+# vnstat 2.x JSON：interfaces[0].traffic.month（单数、数组、按时间升序）。
+# 注意勿用 traffic.total.tx（网卡累计总量，非当月）。取 month 数组末位即当前月。
 def parse_traffic(raw):
     try:
         d = json.loads(raw)
@@ -71,14 +73,15 @@ def parse_traffic(raw):
     months = None
     for ifc in d.get('interfaces', []):
         tr = ifc.get('traffic', {})
-        if 'months' in tr:
-            months = tr['months']
+        months = tr.get('month') or tr.get('months')  # 兼容单数/复数
+        if months:
             break
-    if months is None:
-        months = d.get('traffic', {}).get('months')
+    if not months:
+        tr = d.get('traffic', {})
+        months = tr.get('month') or tr.get('months')
     if not months:
         return None
-    return months[-1].get('tx', 0)  # bytes
+    return months[-1].get('tx', 0)  # bytes，最后一项为当前月
 
 tx_bytes = parse_traffic(env('OPS_VNSTAT'))
 traffic = {"tx_gb": None, "quota_gb": quota, "pct": None}

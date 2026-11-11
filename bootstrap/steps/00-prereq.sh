@@ -30,8 +30,11 @@ prereq_run() {
   local iface
   iface="$(ip route | awk '/default/ {print $5; exit}')"
   if [[ -n "$iface" ]]; then
-    vnstat -i "$iface" --add 2>/dev/null || true
-    vnstat -i "$iface" >/dev/null 2>&1 || true
+    # 接口未入库才 --add；--add 不会自动被运行中的 vnstatd 感知，需重启 daemon（见 vnstat 手册）
+    if ! vnstat -i "$iface" --json >/dev/null 2>&1; then
+      vnstat -i "$iface" --add >/dev/null 2>&1 || true
+      systemctl restart vnstat 2>/dev/null || true
+    fi
   fi
 
   log "检查并启用 2GB swap（2GiB 内存防 OOM）..."
