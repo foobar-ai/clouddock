@@ -109,6 +109,30 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 
 > 橙云下存在两套证书：客户端看的是 CF 自签的 Universal SSL，acme.sh 管的是 CF↔源站之间的源站证书（此时 CF 的 SSL/TLS 模式需设为 `Full (strict)`）。源站证书续期失败不会立刻暴露，但到期后会埋雷，建议方案 A 一劳永逸。
 
+### 切换证书验证方式（http ↔ dns）
+
+已用 HTTP-01 部署、想改成 DNS-01（或反向）时，改 `.env` 后强制重签一次即可：
+
+```bash
+cd /opt/clouddock
+
+# 1) 改 .env（http → dns）
+sed -i 's|^CERT_MODE=.*|CERT_MODE=dns|' deploy/.env
+grep -q '^DNS_PROVIDER=' deploy/.env || echo 'DNS_PROVIDER=dns_cf' >> deploy/.env
+
+# 2) 写入 CF 凭证
+cat > deploy/dnsapi.env <<'EOF'
+export CF_Token=xxx
+export CF_Account_ID=xxx
+export CF_Zone_ID=xxx
+EOF
+
+# 3) 强制重签（CERT_FORCE=1，绕过「证书已存在」的幂等检查）
+CERT_FORCE=1 bash bootstrap/steps/04-cert.sh
+```
+
+重签后 acme.sh 会记住新验证方式，后续自动续期也按新方式走（`dns → http` 反向同理，改 `CERT_MODE=http` 后 `CERT_FORCE=1` 重签即可）。
+
 随后自动完成：系统准备 → Docker → OpenResty → 证书签发 → 启动服务 → 启用 HTTPS。
 
 > 重复执行安全：各阶段幂等，命中「已就绪」即跳过；密钥已生成则保留不覆盖。
