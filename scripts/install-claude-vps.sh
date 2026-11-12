@@ -3,6 +3,7 @@
 # 以专用 agent 用户运行，模型后端走本机 magpie 网关（127.0.0.1:3425）。
 # 约束见 AGENTS.md：一律用官方/可信渠道的当前推荐（未过时）方式。
 # 用法（在 VPS 以 root 执行）：bash /opt/clouddock/scripts/install-claude-vps.sh
+# 可选环境变量：GH_TOKEN=github_pat_xxx（配置 agent 的 GitHub 细粒度 token，无交互）
 set -euo pipefail
 
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "[ERR] 请以 root 运行：sudo -i" >&2; exit 1; }
@@ -38,21 +39,23 @@ npm install -g happy
 echo "[INFO] 以 $AGENT_USER 安装 Claude Code（原生安装器）..."
 su - "$AGENT_USER" -c 'curl -fsSL https://claude.ai/install.sh | bash'
 
-# 5) 后端走本机 magpie：写 agent 的 ~/.claude/settings.json
+# 5) 后端走本机 magpie + 可选 GitHub token：写 agent 的 ~/.claude/settings.json
 GATEWAY_KEY="$(grep '^MAGPIE_GATEWAY_KEY=' "$CLOUDDOCK_DIR/deploy/.env" 2>/dev/null | cut -d= -f2- || true)"
 [[ -n "$GATEWAY_KEY" ]] || echo "[WARN] 未找到 MAGPIE_GATEWAY_KEY，稍后请手动补写 settings.json" >&2
 
 mkdir -p "$AGENT_HOME/.claude"
-cat > "$AGENT_HOME/.claude/settings.json" <<EOF
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "$MAGPIE_URL",
-    "ANTHROPIC_API_KEY": "$GATEWAY_KEY"
-  }
-}
-EOF
+# 用 python3 构造 JSON，避免 token/密钥含特殊字符破坏 JSON；GH_TOKEN 可选
+python3 - "$MAGPIE_URL" "$GATEWAY_KEY" "${GH_TOKEN:-}" > "$AGENT_HOME/.claude/settings.json" <<'PY'
+import json, sys
+base_url, gateway_key, gh_token = sys.argv[1], sys.argv[2], sys.argv[3]
+env = {"ANTHROPIC_BASE_URL": base_url, "ANTHROPIC_API_KEY": gateway_key}
+if gh_token:
+    env["GH_TOKEN"] = gh_token
+print(json.dumps({"env": env}, ensure_ascii=False, indent=2))
+PY
 chown -R "$AGENT_USER":"$AGENT_USER" "$AGENT_HOME/.claude"
 chmod 600 "$AGENT_HOME/.claude/settings.json"
+[[ -n "${GH_TOKEN:-}" ]] && echo "[OK] 已写入 GH_TOKEN 到 agent 的 Claude Code 配置"
 
 # 确保登录 shell 能找到 claude（原生安装器装到 ~/.local/bin）
 grep -q '\.local/bin' "$AGENT_HOME/.profile" 2>/dev/null \

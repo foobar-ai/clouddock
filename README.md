@@ -71,6 +71,35 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 
 > 安全提示：连接串含密钥，会进入进程环境变量与 shell 历史。仅建议在个人 root VPS 上使用；更在意痕迹可用预置 `.env` 方式——先 `git clone` 仓库到 VPS，手动写好 `deploy/.env`（该文件被 `.gitignore` 忽略），再执行 `bash /opt/clouddock/bootstrap/bootstrap.sh`。
 
+### VPS 上的 Claude Code + Happy（无交互，可选）
+
+在 VPS 上装一个「远程 Claude Code agent」并用手机（Happy Coder）控制，后端走本机 magpie。一条命令、无交互（在 VPS 以 root 执行）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/scripts/install-claude-vps.sh | \
+  GH_TOKEN=github_pat_xxx \
+  bash
+```
+
+`GH_TOKEN` 是给 agent 用的 GitHub 细粒度 PAT（fine-grained token），最小权限配置：
+
+| 项 | 设置 |
+| --- | --- |
+| Repository access | **Only select repositories** → 选本仓库（勿选 All） |
+| Contents | Read and write |
+| Pull requests | Read and write |
+| Expiration | 90 天 |
+| 其余 | `Secrets` / `Administration` / `Workflows` / `Actions` 一律不勾 |
+
+装完后（需你本人在 VPS 终端操作、配手机）：
+
+```bash
+su - agent -c 'happy auth login'   # 终端出二维码，手机 Happy App 扫
+su - agent -c 'happy claude'       # 启动，手机接管
+```
+
+> 安全：`GH_TOKEN` 只写入 `~agent/.claude/settings.json`（权限 600），不进 git；token 到期记得轮换。
+
 ### 证书与 Cloudflare 代理（小黄云）
 
 若域名开启了 Cloudflare 代理（橙云），HTTP-01 的签发与**自动续期**都会被 CF 边缘节点拦截：只要开了「Always Use HTTPS / Automatic HTTPS Rewrites」，HTTP 验证请求会被 301 到 HTTPS，导致验证失败。两种处理方式：
