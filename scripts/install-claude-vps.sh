@@ -58,15 +58,17 @@ chown -R "$AGENT_USER":"$AGENT_USER" "$AGENT_HOME/.claude"
 chmod 600 "$AGENT_HOME/.claude/settings.json"
 [[ -n "${GH_TOKEN:-}" ]] && echo "[OK] 已写入 GH_TOKEN 到 agent 的 Claude Code 配置"
 
-# 确保登录 shell 能找到 claude（原生安装器装到 ~/.local/bin）
-grep -q '\.local/bin' "$AGENT_HOME/.profile" 2>/dev/null \
-  || echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$AGENT_HOME/.profile"
+# 确保各 shell 能找到 claude（原生安装器装到 ~/.local/bin；.profile=登录 shell，.bashrc=交互 shell）
+for f in "$AGENT_HOME/.profile" "$AGENT_HOME/.bashrc"; do
+  grep -q '\.local/bin' "$f" 2>/dev/null \
+    || echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$f"
+done
 
 echo ""
 echo "======================================================"
 echo " 安装完成。自检："
 echo "   claude: $(su - "$AGENT_USER" -c 'test -x "$HOME/.local/bin/claude" && echo 已安装 || echo 未找到' 2>/dev/null || true)"
-echo "   happy : $(happy --version 2>/dev/null || echo 未知)"
+echo "   happy : $(command -v happy >/dev/null 2>&1 && echo 已安装 || echo 未找到)"
 echo ""
 echo " 后续两步（需你本人在 VPS 终端操作）："
 echo " 1) 配对手机（终端出二维码，手机 Happy App 扫码）："
