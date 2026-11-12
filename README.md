@@ -165,7 +165,7 @@ bash scripts/clouddock-ops-ssh.sh status
 
 1. **公网最小暴露**：安全组仅放行 22 / 80 / 443；magpie 的 3425/3430 只绑定 127.0.0.1，经 SSH 隧道访问，不暴露公网。
 2. **云主机加固（可选）**：建议使用密钥登录，并在确认无误后关闭密码登录（编辑 `/etc/ssh/sshd_config`，设置 `PasswordAuthentication no` 后 `systemctl restart ssh`）。
-3. **下载源**：所有软件与镜像均来自官方/可信渠道，不引入第三方镜像站。
+3. **下载源**：所有软件与镜像均来自官方/可信渠道，且必须是该渠道当前推荐、未过时的安装方式（如 Claude Code 用官方原生安装器 `curl -fsSL https://claude.ai/install.sh | bash`，不用已废弃的 npm 方式）；不引入第三方镜像站。详见 `AGENTS.md`。
 
 ## 目录结构
 
