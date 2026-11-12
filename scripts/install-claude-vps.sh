@@ -21,11 +21,12 @@ else
   echo "[OK] 用户 $AGENT_USER 已存在"
 fi
 
-# 2) Node 22 LTS（Happy CLI 需 Node 20+；NodeSource 为可信渠道，Node 官方备选为 nodejs.org tarball）
-if ! command -v node >/dev/null 2>&1 || [[ "$(node -v 2>/dev/null | tr -d 'v' | cut -d. -f1)" -lt 20 ]]; then
-  echo "[INFO] 安装 Node 22 LTS ..."
+# 2) Node 24 LTS（happy 的依赖 @slopus/happy-terminal 要求 node>=24；NodeSource 为可信渠道，Node 官方备选为 nodejs.org tarball）
+NODE_MAJOR=24
+if ! command -v node >/dev/null 2>&1 || [[ "$(node -v 2>/dev/null | tr -d 'v' | cut -d. -f1)" -lt "$NODE_MAJOR" ]]; then
+  echo "[INFO] 安装 Node ${NODE_MAJOR} LTS ..."
   export DEBIAN_FRONTEND=noninteractive
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
   apt-get install -y nodejs
 else
   echo "[OK] Node 已满足（$(node -v)）"
