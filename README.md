@@ -78,8 +78,12 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 ```bash
 curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/scripts/install-claude-vps.sh | \
   GH_TOKEN=github_pat_xxx \
+  GIT_USER_NAME='你的名字' \
+  GIT_USER_EMAIL='你的ID+username@users.noreply.github.com' \
   bash
 ```
+
+> `GH_TOKEN` 是**认证**（能否 push）；`GIT_USER_NAME` / `GIT_USER_EMAIL` 是**提交身份**（commit 作者）。两者都要配，否则 `git commit` 会因缺身份报 `Please tell me who you are`。email 建议用 GitHub noreply 邮箱（GitHub → Settings → Emails 可查），提交能关联到你的账号、又不暴露真实邮箱。
 
 `GH_TOKEN` 是给 agent 用的 GitHub 细粒度 PAT（fine-grained token），最小权限配置：
 

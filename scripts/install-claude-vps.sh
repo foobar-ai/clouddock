@@ -3,7 +3,9 @@
 # 以专用 agent 用户运行，模型后端走本机 magpie 网关（127.0.0.1:3425）。
 # 约束见 AGENTS.md：一律用官方/可信渠道的当前推荐（未过时）方式。
 # 用法（在 VPS 以 root 执行）：bash /opt/clouddock/scripts/install-claude-vps.sh
-# 可选环境变量：GH_TOKEN=github_pat_xxx（配置 agent 的 GitHub 细粒度 token，无交互）
+# 可选环境变量（无交互）：
+#   GH_TOKEN=github_pat_xxx               GitHub 细粒度 token（认证：能否 push）
+#   GIT_USER_NAME / GIT_USER_EMAIL        git 提交身份（commit 作者）
 set -euo pipefail
 
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "[ERR] 请以 root 运行：sudo -i" >&2; exit 1; }
@@ -57,6 +59,15 @@ PY
 chown -R "$AGENT_USER":"$AGENT_USER" "$AGENT_HOME/.claude"
 chmod 600 "$AGENT_HOME/.claude/settings.json"
 [[ -n "${GH_TOKEN:-}" ]] && echo "[OK] 已写入 GH_TOKEN 到 agent 的 Claude Code 配置"
+
+# 6) git 提交身份（认证靠 GH_TOKEN，身份靠 name/email，两者缺一不可）
+if [[ -n "${GIT_USER_NAME:-}" && -n "${GIT_USER_EMAIL:-}" ]]; then
+  su - "$AGENT_USER" -c "git config --global user.name '${GIT_USER_NAME}'"
+  su - "$AGENT_USER" -c "git config --global user.email '${GIT_USER_EMAIL}'"
+  echo "[OK] 已设置 git 身份：${GIT_USER_NAME} <${GIT_USER_EMAIL}>"
+else
+  echo "[WARN] 未提供 GIT_USER_NAME/GIT_USER_EMAIL，agent 提交会缺 git 身份（可稍后：su - $AGENT_USER -c 'git config --global user.name 你的名字'）"
+fi
 
 # 确保各 shell 能找到 claude（原生安装器装到 ~/.local/bin；.profile=登录 shell，.bashrc=交互 shell）
 for f in "$AGENT_HOME/.profile" "$AGENT_HOME/.bashrc"; do
