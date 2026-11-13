@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 | `NEWAPI_SQL_DSN` | Supabase PostgreSQL 连接串（`postgresql://...`） | 必填 |
 | `NEWAPI_REDIS_CONN_STRING` | Upstash Redis 连接串（`rediss://...`） | 可选（留空用内存缓存） |
 | `DNS_PROVIDER` | acme.sh DNS API 标识（如 `dns_dp` / `dns_cf`） | 仅 `CERT_MODE=dns` 必填 |
-| `MAGPIE_WEB_KEY` | magpie Web UI 访问密钥（`?k=`）；不传则自动随机生成 | 可选 |
+| `MAGPIE_WEB_KEY` | magpie Web UI 访问密钥（`?k=`，**≥16 字符**）；不传则自动随机生成 | 可选 |
 
 > `CERT_MODE=dns` 时，还需在 VPS 的 `deploy/dnsapi.env` 写入 DNS API 凭证（每行一条 `export KEY=VALUE`）；无交互部署可直接用环境变量 `DNS_API_ENV` 传入（见下文「证书与 Cloudflare 代理」）。
 

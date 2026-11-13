@@ -41,7 +41,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `magpie gwkey add <name>` | 新增网关密钥（key 只打印一次） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
 
-`env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。
+`env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
 
 ### 状态与证书
 

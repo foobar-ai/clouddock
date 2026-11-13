@@ -67,6 +67,11 @@ fi
 [[ "$val" != *$'\n'* && "$val" != *$'\r'* && "$val" != *" "* && "$val" != *$'\t'* ]] \
   || die "值不能包含空白或换行。"
 
+# magpie 硬性要求：MAGPIE_WEB_KEY ≥16 字符，否则容器启动即退出
+if [[ "$key" == "MAGPIE_WEB_KEY" && ${#val} -lt 16 ]]; then
+  die "MAGPIE_WEB_KEY 至少 16 字符（当前 ${#val}）；magpie 启动会拒绝过短密钥。"
+fi
+
 # 按前缀推断目标服务（--svc 优先）
 case "$key" in
   MAGPIE_*) svc="${svc:-magpie}" ;;
