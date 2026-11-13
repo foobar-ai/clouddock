@@ -93,6 +93,15 @@ case "$sub" in
     done
     exec "$CLOUDDOCK" env "${a[@]:1}"
     ;;
+  claude)
+    if [[ "${#a[@]}" -eq 1 ]]; then
+      exec "$CLOUDDOCK" claude
+    fi
+    [[ "${a[1]:-}" == "set-model" && "${#a[@]}" -eq 3 ]] \
+      || deny "claude 仅支持 show 或 set-model <model>"
+    [[ "${a[2]}" =~ ^[A-Za-z0-9._/-]{1,128}$ ]] || deny "非法模型名"
+    exec "$CLOUDDOCK" claude set-model "${a[2]}"
+    ;;
   magpie)
     [[ "${a[1]:-}" == "gwkey" ]] || deny "仅支持 magpie gwkey"
     case "${a[2]:-}" in

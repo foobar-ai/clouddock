@@ -29,6 +29,8 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `restart <svc\|all>` | 重启 | 进程重启，**不重读 `.env`** |
 | `pull <svc>` | 更新单服务镜像 | pull + 只重建该服务 |
 | `logs <svc> [--tail=N]` | 查看日志 | 默认 200 行，自动脱敏 |
+| `claude [show]` | Claude Code 配置 | 显示 agent 的 `base_url` / `model`（密钥打码） |
+| `claude set-model <m>` | 改 VPS Claude Code 模型 | 如 `group/never-stuck`；重启 Claude Code 生效 |
 
 ### 配置与网关（精确、白名单键）
 
@@ -63,6 +65,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「停掉 magpie」→ `stop magpie`；「拉起来」→ `up magpie`
 - 「重载 nginx/OpenResty」→ `reload`
 - 「列 magpie 网关密钥」→ `magpie gwkey list`
+- 「VPS 上 Claude Code 用哪个模型 / 改成 group/xxx」→ `claude` / `claude set-model group/xxx`
 - 「打开/管理 magpie Web UI」→ 本地隧道（见下节）
 - 「让本机 magpie 用 VPS 的模型/订阅」→ `magpie-gateway-tunnel.sh start` + `magpie gwkey add <名称>`（见 Remote magpie 节）
 
@@ -138,4 +141,6 @@ cd /opt/clouddock
 ./clouddock apply
 ./clouddock restart <svc>
 ./clouddock logs <svc> --tail=200
+./clouddock claude
+./clouddock claude set-model group/never-stuck
 ```

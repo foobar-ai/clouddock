@@ -20,6 +20,8 @@ usage() {
   restart <svc|all>       重启指定服务（进程重启，不重读 .env）
   pull <svc>              拉取并重建指定服务镜像
   logs <svc> [--tail=N]   查看服务日志（默认 200 行）
+  claude [show]           查看 VPS 上 agent 的 Claude Code 配置（模型/网关，密钥打码）
+  claude set-model <m>    设置 agent 的 ANTHROPIC_MODEL（如 group/never-stuck）
 
 配置与网关：
   env set KEY[=VALUE] [--svc <svc>] [--stdin]   精确改 .env 并只重建目标服务
@@ -49,6 +51,7 @@ case "$cmd" in
   apply)    bash "$SCRIPT_DIR/ops/apply.sh" "$@" ;;
   restart)  bash "$SCRIPT_DIR/ops/restart.sh" "$@" ;;
   logs)     bash "$SCRIPT_DIR/ops/logs.sh" "$@" ;;
+  claude)   bash "$SCRIPT_DIR/ops/claude.sh" "$@" ;;
   services) bash "$SCRIPT_DIR/ops/services.sh" "$@" ;;
   up)       bash "$SCRIPT_DIR/ops/service.sh" up "$@" ;;
   start)    bash "$SCRIPT_DIR/ops/service.sh" start "$@" ;;
