@@ -40,7 +40,8 @@ PY
 set_model() {
   local model="${1:-}"
   [[ -n "$model" ]] || die "用法: clouddock claude set-model <model>"
-  [[ "$model" =~ ^[A-Za-z0-9._/-]{1,128}$ ]] || die "非法模型名：$model"
+  # 允许 group/xxx、[1m] 后缀等非空白模型名（不会进 shell 求值，安全）
+  [[ "$model" =~ ^[^[:space:]]{1,128}$ ]] || die "非法模型名：$model"
   [[ -f "$SETTINGS" ]] || die "未找到 $SETTINGS（先运行 scripts/install-claude-vps.sh）。"
   python3 - "$SETTINGS" "$model" <<'PY'
 import json, os, sys, tempfile

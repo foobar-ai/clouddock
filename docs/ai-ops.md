@@ -46,7 +46,7 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `pull <svc>` | 更新单服务镜像 | pull + 只重建该服务 |
 | `logs <svc> [--tail=N]` | 日志 | 默认 200 行，自动脱敏 |
 | `claude [show]` | Claude Code 配置 | 显示 agent 的 `base_url` / `model`（密钥打码） |
-| `claude set-model <m>` | 改模型 | 如 `group/never-stuck`；重启 Claude Code 生效 |
+| `claude set-model <m>` | 改模型 | 如 `group/never-stuck[1m]`；重启 Claude Code 生效 |
 
 ### 配置与网关
 
@@ -125,7 +125,7 @@ cd /opt/clouddock
 ./clouddock restart <svc>
 ./clouddock logs <svc> --tail=200
 ./clouddock claude
-./clouddock claude set-model group/never-stuck
+./clouddock claude set-model 'group/never-stuck[1m]'
 ```
 
 > 详见 `skills/clouddock-ops/SKILL.md`（AI 侧调用约定）与 `docs/add-service.md`（服务结构约定）。

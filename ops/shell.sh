@@ -99,7 +99,7 @@ case "$sub" in
     fi
     [[ "${a[1]:-}" == "set-model" && "${#a[@]}" -eq 3 ]] \
       || deny "claude 仅支持 show 或 set-model <model>"
-    [[ "${a[2]}" =~ ^[A-Za-z0-9._/-]{1,128}$ ]] || deny "非法模型名"
+    [[ "${a[2]}" =~ ^[^[:space:]]{1,128}$ ]] || deny "非法模型名"
     exec "$CLOUDDOCK" claude set-model "${a[2]}"
     ;;
   magpie)
