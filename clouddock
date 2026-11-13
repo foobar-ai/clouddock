@@ -12,15 +12,27 @@ usage() {
   cat <<'EOF'
 用法: clouddock <子命令> [参数]
 
-子命令：
-  status                状态巡检（容器/证书/流量/磁盘/git），JSON 输出
-  health                执行巡检并写 /opt/clouddock-data/health.json
-  renew                 续期证书（acme.sh --cron）
-  reissue               强制重签（切换验证方式 http↔dns 用）
-  upgrade               git pull + 幂等重放 bootstrap（含新服务落地）
-  apply                 聚合 compose up -d（不走就绪跳过）
-  restart <svc|all>     重启指定服务
-  logs <svc> [--tail=N] 查看服务日志（默认 200 行）
+服务控制：
+  services                服务清单（服务/容器/状态/镜像/端口），JSON 输出
+  up <svc>                重建/启动指定服务（应用最新 .env）
+  start <svc>             启动已停止的服务
+  stop <svc>              停止指定服务
+  restart <svc|all>       重启指定服务（进程重启，不重读 .env）
+  pull <svc>              拉取并重建指定服务镜像
+  logs <svc> [--tail=N]   查看服务日志（默认 200 行）
+
+配置与网关：
+  env set KEY[=VALUE] [--svc <svc>] [--stdin]   精确改 .env 并只重建目标服务
+  reload                  校验并重载 OpenResty
+  magpie gwkey list|add <name>|remove <name|id>  magpie 网关密钥
+
+状态与证书：
+  status                  状态巡检（容器/证书/流量/磁盘/git），JSON 输出
+  health                  执行巡检并写 /opt/clouddock-data/health.json
+  renew                   续期证书（acme.sh --cron）
+  reissue                 强制重签（切换验证方式 http↔dns 用）
+  upgrade                 git pull + 幂等重放 bootstrap（含新服务落地）
+  apply                   聚合 compose up -d（全量，不走就绪跳过）
 EOF
 }
 
@@ -37,5 +49,13 @@ case "$cmd" in
   apply)    bash "$SCRIPT_DIR/ops/apply.sh" "$@" ;;
   restart)  bash "$SCRIPT_DIR/ops/restart.sh" "$@" ;;
   logs)     bash "$SCRIPT_DIR/ops/logs.sh" "$@" ;;
+  services) bash "$SCRIPT_DIR/ops/services.sh" "$@" ;;
+  up)       bash "$SCRIPT_DIR/ops/service.sh" up "$@" ;;
+  start)    bash "$SCRIPT_DIR/ops/service.sh" start "$@" ;;
+  stop)     bash "$SCRIPT_DIR/ops/service.sh" stop "$@" ;;
+  pull)     bash "$SCRIPT_DIR/ops/service.sh" pull "$@" ;;
+  env)      bash "$SCRIPT_DIR/ops/env.sh" "$@" ;;
+  reload)   bash "$SCRIPT_DIR/ops/reload.sh" "$@" ;;
+  magpie)   bash "$SCRIPT_DIR/ops/magpie.sh" "$@" ;;
   *)        usage >&2; exit 2 ;;
 esac

@@ -100,7 +100,7 @@ clouddock/
 | `NEWAPI_REDIS_CONN_STRING` | Upstash 连接串 | 交互输入（可选） |
 | `NEWAPI_SESSION_SECRET` / `NEWAPI_CRYPTO_SECRET` | 认证密钥 | `openssl rand -hex 32` |
 | `NEWAPI_TRUSTED_PROXIES` | 反代来源 | 常量 |
-| `MAGPIE_WEB_KEY` | Web UI key | `openssl rand -hex 16` |
+| `MAGPIE_WEB_KEY` | Web UI key | `.env` 已有 > `MAGPIE_WEB_KEY` 环境变量 > `openssl rand -hex 16` |
 | `MAGPIE_PUBLIC_URL` | 内部网关地址 | 常量 |
 | `MAGPIE_GATEWAY_KEY` | 链路 A/B 共用调用凭证 | 部署时生成 |
 | `CERT_MODE` / `DNS_PROVIDER` / `TRAFFIC_QUOTA_GB` | 部署级配置 | 交互输入 |

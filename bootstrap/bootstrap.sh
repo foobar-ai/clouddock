@@ -119,7 +119,15 @@ init_secrets() {
   touch "$ENV_FILE"
   [[ -z "$(env_get NEWAPI_SESSION_SECRET 2>/dev/null || true)" ]] && env_set NEWAPI_SESSION_SECRET "$(rand_hex 32)"
   [[ -z "$(env_get NEWAPI_CRYPTO_SECRET 2>/dev/null || true)" ]] && env_set NEWAPI_CRYPTO_SECRET "$(env_get NEWAPI_SESSION_SECRET)"
-  [[ -z "$(env_get MAGPIE_WEB_KEY 2>/dev/null || true)" ]] && env_set MAGPIE_WEB_KEY "$(rand_hex 16)"
+  # MAGPIE_WEB_KEY：无交互时可用环境变量预设（便于固定 Web UI 密钥）；未传则随机生成
+  if [[ -z "$(env_get MAGPIE_WEB_KEY 2>/dev/null || true)" ]]; then
+    if [[ -n "${MAGPIE_WEB_KEY:-}" ]]; then
+      log "使用环境变量 MAGPIE_WEB_KEY（值不回显）"
+      env_set MAGPIE_WEB_KEY "$MAGPIE_WEB_KEY"
+    else
+      env_set MAGPIE_WEB_KEY "$(rand_hex 16)"
+    fi
+  fi
   [[ -z "$(env_get MAGPIE_PUBLIC_URL 2>/dev/null || true)" ]] && env_set MAGPIE_PUBLIC_URL "http://127.0.0.1:3425"
   [[ -z "$(env_get NEWAPI_TRUSTED_PROXIES 2>/dev/null || true)" ]] && env_set NEWAPI_TRUSTED_PROXIES "127.0.0.1,172.16.0.0/12"
   ok ".env 已就绪（密钥已生成/保留）。"

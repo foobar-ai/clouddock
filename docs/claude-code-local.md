@@ -48,7 +48,31 @@ claude
 
 ### 3. 管理 magpie（可选）
 
-浏览器打开 `http://127.0.0.1:3430/?k=<MAGPIE_WEB_KEY>`（`MAGPIE_WEB_KEY` 在 VPS `deploy/.env` 中）。
+#### 本地也在跑 magpie：远程管理 VPS（两边独立，推荐）
+
+本地 magpie 会占用 3430，与链路 A 隧道的 3430 转发冲突。此时用**只转发 Web UI** 的专用隧道，把 VPS 的 Web UI 引到本地空闲端口（默认 3431），再经 magpie 内置「另一个 MAGPIE」在本机窗口里管理，本地与 VPS 两套配置完全独立：
+
+```bash
+bash scripts/magpie-web-tunnel.sh start [VPS地址] [SSH用户] [SSH端口] [本地端口=3431]
+# 后台建隧道；不传 VPS 地址时自动读 .clouddock/ops.conf
+bash scripts/magpie-web-tunnel.sh status   # 查看状态
+bash scripts/magpie-web-tunnel.sh stop     # 关闭隧道
+```
+
+> 隧道复用 `install-ops.sh` 生成的 `.clouddock/ops_key`（已授权 `permitopen="127.0.0.1:3430"`，只允许转发到 magpie Web 端口），无需额外密钥。
+
+然后在本地 magpie：设置 → 网络与共享 → 另一个 MAGPIE，填写：
+
+| 字段 | 值 |
+| --- | --- |
+| 地址 | `http://127.0.0.1:3431`（与上面本地端口一致） |
+| 密钥 | VPS `deploy/.env` 的 `MAGPIE_WEB_KEY`（即 Web UI 链接里 `k=` 的值） |
+
+浏览器兜底：直接打开 `http://127.0.0.1:3431/?k=<MAGPIE_WEB_KEY>`。
+
+#### 本地没有跑 magpie：直接开 Web UI
+
+用链路 A 的隧道（已转发 3430）后，浏览器打开 `http://127.0.0.1:3430/?k=<MAGPIE_WEB_KEY>`（`MAGPIE_WEB_KEY` 在 VPS `deploy/.env` 中）。
 
 ---
 

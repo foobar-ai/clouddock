@@ -47,3 +47,39 @@ sys.stdout.write(data)
 valid_svc_name() {
   [[ "$1" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]]
 }
+
+# ---------- compose 聚合 ----------
+# 构建所有服务的 compose -f 参数列表（与 05-services.sh / apply.sh 保持一致）
+# 约定：本项目 compose 的 service 名与 container_name 一致。
+compose_files() {
+  COMPOSE_FILES=()
+  local f
+  for f in "$COMPOSE_DIR"/*/compose.yml; do
+    [[ -f "$f" ]] && COMPOSE_FILES+=(-f "$f")
+  done
+  [[ "${#COMPOSE_FILES[@]}" -gt 0 ]] || die "未找到任何服务 compose 文件（${COMPOSE_DIR}）。"
+}
+
+# 服务是否已在本项目声明（按 container_name）
+svc_known() {
+  local s
+  for s in $(svc_names); do
+    [[ "$s" == "$1" ]] && return 0
+  done
+  return 1
+}
+
+# 要求合法且已声明的服务名
+require_svc() {
+  local s="${1:-}"
+  [[ -n "$s" ]] || die "缺少服务名。"
+  valid_svc_name "$s" || die "非法服务名：$s"
+  svc_known "$s" || die "未声明的服务：$s（可用：$(svc_names | tr '\n' ' ')）"
+}
+
+# ---------- 精确重建单个服务 ----------
+# 用同一组 compose 文件（保持 project 一致）只 up 目标服务，避免误动其他服务。
+compose_up_svc() {
+  local svc="$1"
+  docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" up -d "$svc"
+}

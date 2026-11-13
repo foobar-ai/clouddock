@@ -23,7 +23,7 @@ bash scripts/install-ops.sh <VPS地址> [SSH用户] [SSH端口]
 
 它会：
 1. 生成 `.clouddock/ops_key`（专用 ed25519 密钥，已 gitignore）+ `.clouddock/ops.conf`。
-2. 推送白名单到 VPS `authorized_keys`（`command=/opt/clouddock/ops/shell.sh` + 禁用 pty/端口转发/agent-forwarding）。
+2. 推送白名单到 VPS `authorized_keys`（`command=/opt/clouddock/ops/shell.sh` + 禁用 pty/agent-forwarding；端口转发仅限 `permitopen="127.0.0.1:3430"`，供本地 magpie Web 隧道）。
 3. `git pull` VPS 上的仓库（确保 `ops/` 脚本存在），并安装定时巡检 cron。
 
 验证：
@@ -34,16 +34,41 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 
 ## 子命令参考
 
-| 子命令 | 作用 | 输出 |
+### 服务控制（只动目标服务）
+
+| 子命令 | 作用 | 说明 |
 | --- | --- | --- |
-| `status` | 状态巡检 | JSON：容器/证书/流量/磁盘/git |
-| `health` | 写健康快照 | 写 `/opt/clouddock-data/health.json`（cron 每天 0/12 点自动写） |
-| `renew` | 续期证书 | `acme.sh --cron`（到期才续，幂等） |
-| `reissue` | 强制重签 | 复用 `CERT_FORCE=1`，切换 http↔dns 用 |
-| `upgrade` | 升级 | git pull + 幂等重放 bootstrap + apply |
-| `apply` | 聚合启动 | `compose up -d` + 各 deploy.sh，不走就绪跳过 |
-| `restart <svc\|all>` | 重启 | 服务名正则校验 |
+| `services` | 服务清单 | JSON：服务/容器/状态/镜像/端口 |
+| `up <svc>` | 重建/启动 | 应用最新 `.env`，只动目标服务 |
+| `start <svc>` | 启动已停止容器 | 不重建 |
+| `stop <svc>` | 停止服务 | 保留容器 |
+| `restart <svc\|all>` | 重启 | 进程重启，**不重读 `.env`** |
+| `pull <svc>` | 更新单服务镜像 | pull + 只重建该服务 |
 | `logs <svc> [--tail=N]` | 日志 | 默认 200 行，自动脱敏 |
+
+### 配置与网关
+
+| 子命令 | 作用 |
+| --- | --- |
+| `env set KEY=VALUE [--svc <svc>]` | 精确改 `.env` 并只重建目标服务 |
+| `env set KEY --stdin [--svc <svc>]` | 密钥从 stdin 传入（不进 shell 历史） |
+| `reload` | 校验并重载 OpenResty |
+| `magpie gwkey list` | 列 magpie 网关密钥（打码） |
+| `magpie gwkey add <name>` | 新增网关密钥（一次性返回） |
+| `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
+
+`env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。
+
+### 状态与证书
+
+| 子命令 | 作用 |
+| --- | --- |
+| `status` | 巡检 JSON（容器/证书/流量/磁盘/git） |
+| `health` | 写 `/opt/clouddock-data/health.json`（cron 每天 0/12 点） |
+| `renew` | `acme.sh --cron`（到期才续，幂等） |
+| `reissue` | 强制重签（切换 http↔dns） |
+| `upgrade` | git pull + 幂等重放 bootstrap + apply |
+| `apply` | 全量 compose up -d（慎用；单服务用 `up <svc>`） |
 
 ## status 判读阈值
 
@@ -70,9 +95,11 @@ bash scripts/clouddock-ops-ssh.sh status
 
 ## 安全模型
 
-- **白名单最小集**：`status/health/renew/reissue/upgrade/apply/restart/logs`；`uninstall` 不纳入，需人工执行。
-- **参数校验**：服务名限 `^[a-z0-9][a-z0-9-]{0,31}$`，`--tail=N` 限正整数，杜绝命令注入；拒绝的调用记录到 syslog（`logger -t clouddock-ops`）。
-- **通道加固**：专用 key 无 pty / 端口转发 / agent-forwarding / X11。
+- **白名单**：`status/health/renew/reissue/upgrade/apply/services/up/start/stop/pull/restart/logs/env set/reload/magpie gwkey`；`uninstall` 不纳入，需人工执行。
+- **参数校验**：服务名限 `^[a-z0-9][a-z0-9-]{0,31}$`；`--tail=N` 限正整数；`env set` 仅允许 `MAGPIE_WEB_KEY/MAGPIE_PUBLIC_URL/TRAFFIC_QUOTA_GB`；杜绝命令注入；拒绝的调用记录到 syslog（`logger -t clouddock-ops`）。
+- **密钥不落日志**：`env set` 的拒绝日志会脱敏（`KEY=***`）；密钥优先 `--stdin`，避免进 shell 历史与 SSH 命令行。
+- **单服务优先**：`up/start/stop/pull` 只作用于目标服务；`apply` 才是全量，避免误重启无关服务。
+- **通道加固**：专用 key 无 pty / agent-forwarding / X11；端口转发仅 `permitopen="127.0.0.1:3430"`（magpie Web 隧道用），其余目标一律拒绝。
 - **脱敏**：`logs`/`status` 输出对 `.env`、`dnsapi.env` 的敏感值替换为 `***`。
 - **私钥保护**：`.clouddock/` 已 gitignore，绝不提交、绝不写入输出/日志。
 
@@ -81,6 +108,14 @@ bash scripts/clouddock-ops-ssh.sh status
 ```bash
 cd /opt/clouddock
 ./clouddock status
+./clouddock services
+./clouddock up magpie
+./clouddock start magpie
+./clouddock stop magpie
+./clouddock pull magpie
+./clouddock env set MAGPIE_WEB_KEY=新值
+./clouddock reload
+./clouddock magpie gwkey list
 ./clouddock renew
 ./clouddock reissue
 ./clouddock upgrade

@@ -63,6 +63,8 @@ mkdir -p "$DATA_DIR/my-service"
 ```bash
 cd /opt/clouddock
 bash bootstrap/bootstrap.sh      # 重新跑一遍（幂等，会自动聚合启动新服务）
+# 或只拉起新服务，不动其他服务：
+./clouddock up <name>
 ```
 
 ## 幂等提示

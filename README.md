@@ -48,6 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
 | `NEWAPI_SQL_DSN` | Supabase PostgreSQL 连接串（`postgresql://...`） | 必填 |
 | `NEWAPI_REDIS_CONN_STRING` | Upstash Redis 连接串（`rediss://...`） | 可选（留空用内存缓存） |
 | `DNS_PROVIDER` | acme.sh DNS API 标识（如 `dns_dp` / `dns_cf`） | 仅 `CERT_MODE=dns` 必填 |
+| `MAGPIE_WEB_KEY` | magpie Web UI 访问密钥（`?k=`）；不传则自动随机生成 | 可选 |
 
 > `CERT_MODE=dns` 时，还需在 VPS 的 `deploy/dnsapi.env` 写入 DNS API 凭证（每行一条 `export KEY=VALUE`）；无交互部署可直接用环境变量 `DNS_API_ENV` 传入（见下文「证书与 Cloudflare 代理」）。
 
@@ -62,10 +63,11 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/install.sh
   TRAFFIC_QUOTA_GB=1024 \
   NEWAPI_SQL_DSN='postgresql://postgres.xxx:password@host:5432/postgres' \
   NEWAPI_REDIS_CONN_STRING='rediss://:password@host:6379' \
+  MAGPIE_WEB_KEY=你的Web密钥 \
   bash
 ```
 
-所有会询问的配置项（含 `TRAFFIC_QUOTA_GB`、`NEWAPI_REDIS_CONN_STRING`）都通过环境变量提供时**全程零询问**；缺了哪项就只对缺的那项交互询问（在 SSH 会话中仍可正常输入）。`NEWAPI_REDIS_CONN_STRING` 传空串 `''` 表示「不使用 Redis」，也会干净跳过询问。
+所有会询问的配置项（含 `TRAFFIC_QUOTA_GB`、`NEWAPI_REDIS_CONN_STRING`）都通过环境变量提供时**全程零询问**；缺了哪项就只对缺的那项交互询问（在 SSH 会话中仍可正常输入）。`NEWAPI_REDIS_CONN_STRING` 传空串 `''` 表示「不使用 Redis」，也会干净跳过询问。`MAGPIE_WEB_KEY` 传值则直接写入 `.env`（固定 Web UI 密钥），不传则自动随机生成。
 
 取值优先级为：**`deploy/.env` 已有值 > shell 环境变量 > 交互询问**。所有值最终都会写入 `deploy/.env`，因此重跑安装脚本时不会再重复询问（幂等），临时改配置可在 VPS 上直接编辑 `/opt/clouddock/deploy/.env`。
 
@@ -183,16 +185,21 @@ KEEP_DATA=1 bash /opt/clouddock/uninstall.sh  # 保留业务数据目录（new-a
 
 ## AI 运维（可选）
 
-部署完成后，可让 AI（Claude Code / CodeBuddy）通过专用 SSH 白名单通道安全地执行运维（状态巡检 / 证书续期与切换 / 升级 / 重启与日志 / 安装新服务）：
+部署完成后，可让 AI（Claude Code / CodeBuddy）通过专用 SSH 白名单通道安全地执行运维（状态巡检 / **单服务启停与更新** / **精确改 env 只重建目标服务** / OpenResty 重载 / magpie 网关密钥 / 证书续期与切换 / 升级 / 日志 / 安装新服务）：
 
 ```bash
 # 本地仓库一次性初始化：生成专用 key + 推送白名单 + 装定时巡检
 bash scripts/install-ops.sh <VPS地址>
 # 之后 AI 即可自然语言触发，底层调用：
-bash scripts/clouddock-ops-ssh.sh status
+bash scripts/clouddock-ops-ssh.sh services                     # 服务清单
+bash scripts/clouddock-ops-ssh.sh up magpie                    # 只重建 magpie
+bash scripts/clouddock-ops-ssh.sh env set MAGPIE_WEB_KEY=新值  # 只重建 magpie
+bash scripts/clouddock-ops-ssh.sh reload                       # 重载 OpenResty
 ```
 
 详见 `docs/ai-ops.md`（命令参考 / 安全模型）与 `skills/clouddock-ops/SKILL.md`（AI 调用约定）。
+
+> 仓库版 skill 更新后，运行 `bash scripts/sync-skill.sh` 同步到 CodeBuddy 本地 `.codebuddy/skills/`（该目录被 gitignore）。
 
 ## 安全建议
 
