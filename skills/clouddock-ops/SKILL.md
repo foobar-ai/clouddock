@@ -64,6 +64,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「重载 nginx/OpenResty」→ `reload`
 - 「列 magpie 网关密钥」→ `magpie gwkey list`
 - 「打开/管理 magpie Web UI」→ 本地隧道（见下节）
+- 「让本机 magpie 用 VPS 的模型/订阅」→ `magpie-gateway-tunnel.sh start` + `magpie gwkey add <名称>`（见 Remote magpie 节）
 
 ## status 判读阈值
 
@@ -94,12 +95,25 @@ bash scripts/magpie-web-tunnel.sh stop     # 关闭隧道
 
 隧道复用同一把 `.clouddock/ops_key`（`install-ops.sh` 已授权 `permitopen="127.0.0.1:3430"`，只允许转发到 magpie Web 端口），无需额外密钥；`-N` 纯转发不触发 `command=` 白名单命令。
 
+## Remote magpie（本机使用 VPS 模型）
+
+当用户要「让本机 magpie 用 VPS 的模型/订阅」时（本机与 VPS 两套 magpie 独立，只是把 VPS 当上游供应商）：
+
+```bash
+bash scripts/magpie-gateway-tunnel.sh start                 # 本地 3426 -> VPS 3425，后台
+bash scripts/clouddock-ops-ssh.sh magpie gwkey add MacBook   # 生成 gateway key（只打印一次）
+```
+
+然后让用户在本机 magpie → 供应商 → 添加 → **Remote magpie**：接口地址 `http://127.0.0.1:3426`，API 密钥填生成的 `sk-magpie-key-...`；可选勾「带上它那边的供应商（穿透）」。关闭隧道：`magpie-gateway-tunnel.sh stop`。
+
+> 与「另一个 MAGPIE」的区别：那个连 3430 管理 Web UI；这个连 3425 当模型上游。
+
 ## 安全边界（必须遵守）
 
 - 白名单仅放行上述子命令；`uninstall` 不在白名单，需用户人工执行 `bash /opt/clouddock/uninstall.sh`。
 - `env set` 仅允许白名单键；密钥优先用 `--stdin`；拒绝日志会自动脱敏（值不进 syslog）。
 - `up/stop/pull` 只影响目标服务；`apply` 才是全量，非必要不用。
-- 专用 key 无 pty / agent-forwarding；端口转发仅放行 `permitopen="127.0.0.1:3430"`（magpie Web，供本地隧道），其余目标一律拒绝；即使提示词被注入也越不过白名单。
+- 专用 key 无 pty / agent-forwarding；端口转发仅放行 `permitopen="127.0.0.1:3430"`（magpie Web）与 `permitopen="127.0.0.1:3425"`（magpie 网关），其余目标一律拒绝；即使提示词被注入也越不过白名单。
 - 日志/status 输出自动脱敏（`.env`、`dnsapi.env` 的敏感值替换为 `***`）。
 - 绝不把 `.clouddock/`（私钥）或 VPS 上的 `.env` / `dnsapi.env` 内容写入输出、日志或任何沉淀内容。
 - `magpie gwkey add` 返回的是一次性密钥：只回给用户，不写入任何文件/日志/记忆。

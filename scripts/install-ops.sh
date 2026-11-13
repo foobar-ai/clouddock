@@ -24,9 +24,10 @@ printf 'OPS_SSH_HOST=%s\nOPS_SSH_USER=%s\nOPS_SSH_PORT=%s\n' "$HOST" "$SSH_USER"
 chmod 600 "$KEY" "$CONF"
 
 PUB="$(cat "$KEY.pub")"
-# permitopen：同一把 key 额外允许转发到 magpie Web(127.0.0.1:3430)，供本地「另一个 MAGPIE」远程管理；
+# permitopen：同一把 key 额外允许转发到 magpie Web(3430) 与网关(3425)，
+# 供本地「另一个 MAGPIE」远程管理、以及「Remote magpie」把 VPS 当上游供应商；
 # 其余转发目标一律拒绝。command= 仍强制 ops/shell.sh，-N 纯隧道不触发命令白名单。
-LINE="command=\"/opt/clouddock/ops/shell.sh\",no-pty,permitopen=\"127.0.0.1:3430\",no-agent-forwarding,no-X11-forwarding $PUB"
+LINE="command=\"/opt/clouddock/ops/shell.sh\",no-pty,permitopen=\"127.0.0.1:3430\",permitopen=\"127.0.0.1:3425\",no-agent-forwarding,no-X11-forwarding $PUB"
 
 echo "== 推送白名单与定时巡检到 VPS（首次需输入一次密码）=="
 ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "bash -s" <<REMOTE

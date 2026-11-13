@@ -76,6 +76,39 @@ bash scripts/magpie-web-tunnel.sh stop     # 关闭隧道
 
 ---
 
+## 远程 magpie（本地 magpie 使用 VPS 模型）
+
+若想让本机 magpie 把 VPS 当上游供应商（本地 Agent 使用 VPS 的订阅/路由），用 magpie 官方的「Remote magpie」，无需同步配置。
+
+1. 建隧道（复用 ops_key，后台常驻）：
+
+```bash
+bash scripts/magpie-gateway-tunnel.sh start   # 本地 3426 -> VPS 127.0.0.1:3425
+bash scripts/magpie-gateway-tunnel.sh status
+bash scripts/magpie-gateway-tunnel.sh stop
+```
+
+2. 生成 VPS 的 gateway key（本地执行）：
+
+```bash
+bash scripts/clouddock-ops-ssh.sh magpie gwkey add MacBook
+# 输出形如 sk-magpie-key-...
+```
+
+3. 本机 magpie → 供应商 → 添加 → **Remote magpie**：
+
+| 字段 | 填 |
+| --- | --- |
+| 接口地址 | `http://127.0.0.1:3426` |
+| API 密钥 | 上一步生成的 `sk-magpie-key-...` |
+| 名称 / ID | 自定，如 `VPS` / `vps` |
+
+可选勾选「带上它那边的供应商（穿透）」，这样模型会显示为 `vps/<provider>/<model>`。
+
+> 区别：**另一个 MAGPIE** 是管理 Web UI（3430）；**Remote magpie** 是把 VPS 当模型上游（3425）。
+
+---
+
 ## 链路 B（兜底）：经 new-api HTTPS
 
 远程无 SSH 隧道时可用，且借 new-api 做统一鉴权/用量日志。注意为「网关套网关」，有两次格式转换，可能损失部分 Claude 高级特性。

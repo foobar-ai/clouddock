@@ -23,7 +23,7 @@ bash scripts/install-ops.sh <VPS地址> [SSH用户] [SSH端口]
 
 它会：
 1. 生成 `.clouddock/ops_key`（专用 ed25519 密钥，已 gitignore）+ `.clouddock/ops.conf`。
-2. 推送白名单到 VPS `authorized_keys`（`command=/opt/clouddock/ops/shell.sh` + 禁用 pty/agent-forwarding；端口转发仅限 `permitopen="127.0.0.1:3430"`，供本地 magpie Web 隧道）。
+2. 推送白名单到 VPS `authorized_keys`（`command=/opt/clouddock/ops/shell.sh` + 禁用 pty/agent-forwarding；端口转发仅限 `permitopen="127.0.0.1:3430"`（magpie Web）与 `permitopen="127.0.0.1:3425"`（magpie 网关，供 Remote magpie））。
 3. `git pull` VPS 上的仓库（确保 `ops/` 脚本存在），并安装定时巡检 cron。
 
 验证：
