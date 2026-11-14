@@ -3,6 +3,7 @@
 # 用法:
 #   clouddock agent git [--check-push]   SSH 资产/认证/git 身份/仓库 remote；--check-push 走 push --dry-run
 #   clouddock agent git-setup            安装 credential helper + git@github.com: → https 重写
+#   clouddock agent clone <owner/repo>   以 agent 身份 clone 到 ~agent/projects/<repo>
 #   clouddock agent gh-token set         （stdin 传 token）更新 settings.json 的 GH_TOKEN
 set -euo pipefail
 
@@ -23,6 +24,7 @@ usage() {
 用法: clouddock agent <子命令>
   agent git [--check-push]   GitHub 访问诊断（只读）
   agent git-setup            配置 git 走 PAT（credential helper + SSH URL 重写）
+  agent clone <owner/repo>   clone 到 ~agent/projects/<repo>
   agent gh-token set         stdin 传入新 PAT，写入 ~agent/.claude/settings.json
 EOF
   exit 2
@@ -148,6 +150,23 @@ agent_git_setup() {
   log "提醒：PAT 需把目标仓库加入 Repository access，权限 Contents: Read and write。"
 }
 
+agent_clone() {
+  local spec="${1:-}" name dest out
+  [[ "$spec" =~ ^[A-Za-z0-9_.-]{1,64}/[A-Za-z0-9_.-]{1,100}$ ]] \
+    || die "用法: clouddock agent clone <owner/repo>"
+  name="${spec#*/}"
+  dest="$AGENT_HOME/projects/$name"
+  [[ -d "$dest/.git" ]] && die "已存在：$dest"
+
+  out="$(su - "$AGENT_USER" -c "mkdir -p ~/projects && GIT_TERMINAL_PROMPT=0 git clone -- https://github.com/${spec}.git ~/projects/${name}" 2>&1 || true)"
+  if [[ ! -d "$dest/.git" ]]; then
+    printf '%s\n' "$out" | tail -n3 >&2
+    die "clone 失败：PAT 是否已把 ${spec} 加入 Repository access（Contents: Read）？"
+  fi
+  chown -R "$AGENT_USER":"$AGENT_USER" "$dest"
+  ok "已 clone 到 $dest"
+}
+
 agent_gh_token_set() {
   [[ "${1:-}" == "--stdin" ]] || die "用法: clouddock agent gh-token set --stdin（token 走 stdin，不进命令行）"
   [[ -f "$SETTINGS" ]] || die "未找到 $SETTINGS（先 clouddock claude apply）。"
@@ -184,6 +203,7 @@ shift || true
 case "$cmd" in
   git)        agent_git "$@" ;;
   git-setup)  agent_git_setup ;;
+  clone)      agent_clone "${1:-}" ;;
   gh-token)
     [[ "${1:-}" == "set" ]] || usage
     shift || true

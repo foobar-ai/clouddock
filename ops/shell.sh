@@ -154,6 +154,11 @@ case "$sub" in
         [[ "${#a[@]}" -eq 2 ]] || deny "agent git-setup 不接受参数"
         exec "$CLOUDDOCK" agent git-setup
         ;;
+      clone)
+        [[ "${#a[@]}" -eq 3 ]] || deny "agent clone 需且仅需 owner/repo"
+        [[ "${a[2]}" =~ ^[A-Za-z0-9_.-]{1,64}/[A-Za-z0-9_.-]{1,100}$ ]] || deny "非法仓库标识：${a[2]}"
+        exec "$CLOUDDOCK" agent clone "${a[2]}"
+        ;;
       gh-token)
         [[ "${a[2]:-}" == "set" && "${#a[@]}" -eq 3 ]] || deny "仅支持 agent gh-token set（token 走 stdin）"
         exec "$CLOUDDOCK" agent gh-token set --stdin

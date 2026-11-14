@@ -47,6 +47,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `tools ensure <tool>` | 受控装工具 | apt 官方源；白名单目前仅 `tmux` |
 | `agent git [--check-push]` | agent 的 GitHub 访问诊断 | SSH 资产/认证/git 身份/仓库 remote；`--check-push` = `git push --dry-run` |
 | `agent git-setup` | 让 git 走 PAT | 装 credential helper（读 settings.json 的 `GH_TOKEN`）+ `git@github.com:` → https 重写 |
+| `agent clone <owner/repo>` | 以 agent 身份拉仓库 | 落到 `~agent/projects/<repo>`，走 PAT |
 | `agent gh-token set` | 轮换 PAT | token 从 stdin 传入，写入 settings.json 的 `GH_TOKEN`（600） |
 
 `env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
