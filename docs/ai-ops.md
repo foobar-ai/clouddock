@@ -45,8 +45,10 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `restart <svc\|all>` | 重启 | 进程重启，**不重读 `.env`** |
 | `pull <svc>` | 更新单服务镜像 | pull + 只重建该服务 |
 | `logs <svc> [--tail=N]` | 日志 | 默认 200 行，自动脱敏 |
-| `claude [show]` | Claude Code 配置 | 显示 agent 的 `base_url` / `model`（密钥打码） |
-| `claude set-model <m>` | 改模型 | 如 `group/never-stuck[1m]`；重启 Claude Code 生效 |
+| `claude [show]` | Claude Code 配置 | 模型矩阵（model/picker/haiku·sonnet·opus·small_fast）+ 网关（密钥打码） |
+| `claude apply [--model <m>]` | 按模板重渲染 | 模板 `claude/settings.template.json`；保留 `GH_TOKEN`/网关 key/自加 env |
+| `claude set-model <m>` | 只改模型 | 所有模型位点改成 `<m>`（如 `group/free[1m]`）；重启 Claude Code 生效 |
+| `claude doctor` | 环境自检 | claude/happy/tmux/settings 合法性/magpie 网关 HTTP 码 |
 
 ### 配置与网关
 
@@ -97,7 +99,7 @@ bash scripts/clouddock-ops-ssh.sh status
 
 ## 安全模型
 
-- **白名单**：`status/health/renew/reissue/upgrade/apply/services/up/start/stop/pull/restart/logs/env set/reload/magpie gwkey`；`uninstall` 不纳入，需人工执行。
+- **白名单**：`status/health/renew/reissue/upgrade/apply/services/up/start/stop/pull/restart/logs/env set/reload/magpie gwkey/claude show|apply|set-model|doctor`；`uninstall` 不纳入，需人工执行。
 - **参数校验**：服务名限 `^[a-z0-9][a-z0-9-]{0,31}$`；`--tail=N` 限正整数；`env set` 仅允许 `MAGPIE_WEB_KEY/MAGPIE_PUBLIC_URL/TRAFFIC_QUOTA_GB`；杜绝命令注入；拒绝的调用记录到 syslog（`logger -t clouddock-ops`）。
 - **密钥不落日志**：`env set` 的拒绝日志会脱敏（`KEY=***`）；密钥优先 `--stdin`，避免进 shell 历史与 SSH 命令行。
 - **单服务优先**：`up/start/stop/pull` 只作用于目标服务；`apply` 才是全量，避免误重启无关服务。
@@ -125,7 +127,9 @@ cd /opt/clouddock
 ./clouddock restart <svc>
 ./clouddock logs <svc> --tail=200
 ./clouddock claude
-./clouddock claude set-model 'group/never-stuck[1m]'
+./clouddock claude apply --model 'group/free[1m]'
+./clouddock claude set-model 'group/free[1m]'
+./clouddock claude doctor
 ```
 
 > 详见 `skills/clouddock-ops/SKILL.md`（AI 侧调用约定）与 `docs/add-service.md`（服务结构约定）。

@@ -1,0 +1,39 @@
+{
+  "modelPicker": {
+    "options": [
+      {
+        "description": "via magpie",
+        "label": "最快优先(free) · routing group",
+        "model": "__MODEL__"
+      }
+    ],
+    "replaceBuiltInOptions": true
+  },
+  "model": "__MODEL__",
+  "effortLevel": "high",
+  "cleanupPeriodDays": 720,
+  "env": {
+    "CLAUDE_CODE_MODEL_CAPABILITIES": "__MODEL_BASE__=effort",
+    "CLAUDE_CODE_AUTO_MODE_SERVER": "0",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "272000",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "128000",
+    "ANTHROPIC_SMALL_FAST_MODEL": "__MODEL__",
+    "ANTHROPIC_BASE_URL": "__BASE_URL__",
+    "ANTHROPIC_API_KEY": "__GATEWAY_KEY__",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "__MODEL__",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "__MODEL__",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "__MODEL__",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+    "DISABLE_INSTALLATION_CHECKS": "1",
+    "ENABLE_TOOL_SEARCH": "1",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "tui": "fullscreen",
+  "teammateMode": "tmux",
+  "useAutoModeDuringPlan": false,
+  "agentSettings": {
+    "teammateModel": "__MODEL__"
+  }
+}

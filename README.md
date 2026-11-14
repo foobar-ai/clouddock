@@ -106,6 +106,21 @@ su - agent -c 'happy claude'       # 启动，手机接管
 
 > 安全：`GH_TOKEN` 只写入 `~agent/.claude/settings.json`（权限 600），不进 git；token 到期记得轮换。
 
+#### Claude Code 配置模板（单一真源）
+
+agent 的 `~/.claude/settings.json` 不手写，由仓库模板 `claude/settings.template.json` 渲染（模型矩阵、effort、Agent Teams、compact 窗口等都在模板里，可版本管理、可回滚）：
+
+```bash
+bash scripts/clouddock-ops-ssh.sh claude                              # 看当前模型矩阵（密钥打码）
+bash scripts/clouddock-ops-ssh.sh claude apply --model 'group/free[1m]' # 按模板收敛
+bash scripts/clouddock-ops-ssh.sh claude set-model 'group/free[1m]'     # 只换模型，不动其他配置
+bash scripts/clouddock-ops-ssh.sh claude doctor                       # 自检（claude/happy/tmux/settings/网关连通）
+```
+
+- `apply` 保留模板外的敏感与环境项（`GH_TOKEN`、`deploy/.env` 的 `MAGPIE_GATEWAY_KEY`、你自行追加的 env），并丢弃会与模型矩阵冲突的遗留键 `ANTHROPIC_MODEL` / `ANTHROPIC_AUTH_TOKEN`。
+- 模板不含本机专属项：`statusLine`（ccline 二进制）、`extraKnownMarketplaces`（本机插件市场）、代理变量（`HTTPS_PROXY` 等）。`teammateMode: tmux` 需 VPS 装有 tmux，`claude doctor` 会提示。
+- 模型名支持 `group/xxx[1m]` 形式；`CLAUDE_CODE_MODEL_CAPABILITIES` 自动取去掉 `[1m]` 的基础名（如 `group/free=effort`）。
+
 ### 证书与 Cloudflare 代理（小黄云）
 
 若域名开启了 Cloudflare 代理（橙云），HTTP-01 的签发与**自动续期**都会被 CF 边缘节点拦截：只要开了「Always Use HTTPS / Automatic HTTPS Rewrites」，HTTP 验证请求会被 301 到 HTTPS，导致验证失败。两种处理方式：
@@ -231,6 +246,7 @@ clouddock/
 │   ├── status.sh / health.sh      #   状态巡检 / 健康快照
 │   ├── renew.sh / upgrade.sh      #   续期 / 升级
 │   ├── apply.sh / restart.sh / logs.sh
+│   ├── claude.sh                  #   Claude Code 配置（模板渲染/改模型/自检）
 │   └── cron-install.sh            #   定时巡检安装
 ├── services/                      # 服务定义（每服务一目录，可扩展）
 │   ├── new-api/
@@ -241,6 +257,8 @@ clouddock/
 │       └── deploy.sh              #   就绪检查 + gateway key
 ├── deploy/                        # 配置
 │   └── .env.example               #   环境变量模板
+├── claude/                        # Claude Code 配置模板
+│   └── settings.template.json     #   agent 的 ~/.claude/settings.json 单一真源
 ├── openresty/                     # 反代配置
 │   ├── nginx.conf                 #   OpenResty 主配置
 │   └── sites/                     #   站点配置

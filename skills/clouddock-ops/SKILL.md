@@ -29,8 +29,10 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `restart <svc\|all>` | 重启 | 进程重启，**不重读 `.env`** |
 | `pull <svc>` | 更新单服务镜像 | pull + 只重建该服务 |
 | `logs <svc> [--tail=N]` | 查看日志 | 默认 200 行，自动脱敏 |
-| `claude [show]` | Claude Code 配置 | 显示 agent 的 `base_url` / `model`（密钥打码） |
-| `claude set-model <m>` | 改 VPS Claude Code 模型 | 如 `group/never-stuck[1m]`；重启 Claude Code 生效 |
+| `claude [show]` | Claude Code 配置 | 模型矩阵（model/picker/haiku·sonnet·opus·small_fast）+ 网关，密钥打码 |
+| `claude apply [--model <m>]` | 按模板重渲染配置 | 模板 `claude/settings.template.json`（单一真源）；保留 GH_TOKEN/网关 key/自加 env |
+| `claude set-model <m>` | 只换模型 | 把所有模型位点改为 `<m>`（如 `group/free[1m]`）；重启 Claude Code 生效 |
+| `claude doctor` | 环境自检 | claude/happy/tmux/settings 合法性/magpie 网关 HTTP 码 |
 
 ### 配置与网关（精确、白名单键）
 
@@ -66,6 +68,8 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「重载 nginx/OpenResty」→ `reload`
 - 「列 magpie 网关密钥」→ `magpie gwkey list`
 - 「VPS 上 Claude Code 用哪个模型 / 改成 group/xxx」→ `claude` / `claude set-model group/xxx`
+- 「按项目模板收敛 Claude Code 配置 / 恢复参考配置」→ `claude apply --model group/free[1m]`
+- 「Claude Code 是不是装坏了 / 连不上 magpie」→ `claude doctor`
 - 「打开/管理 magpie Web UI」「magpie 隧道断了 / 打不开」「唤醒 magpie 隧道」→ `magpie-web-tunnel.sh start`（幂等：已在运行直接返回，断了就重连）
 - 「让本机 magpie 用 VPS 的模型/订阅」→ `magpie-gateway-tunnel.sh start` + `magpie gwkey add <名称>`（见 Remote magpie 节）
 
@@ -113,6 +117,22 @@ bash scripts/clouddock-ops-ssh.sh magpie gwkey add MacBook   # 生成 gateway ke
 
 > 与「另一个 MAGPIE」的区别：那个连 3430 管理 Web UI；这个连 3425 当模型上游。
 
+## Claude Code 配置：模板化（单一真源）
+
+agent 的 `~agent/.claude/settings.json` 由仓库内模板 `claude/settings.template.json` 渲染，**不要手工编辑 VPS 上的 json**：
+
+```bash
+bash scripts/clouddock-ops-ssh.sh claude apply --model 'group/free[1m]'   # 按模板收敛
+bash scripts/clouddock-ops-ssh.sh claude set-model 'group/never-stuck[1m]' # 只换模型
+bash scripts/clouddock-ops-ssh.sh claude show                             # 看当前矩阵
+bash scripts/clouddock-ops-ssh.sh claude doctor                           # 自检
+```
+
+- 模板占位符：`__MODEL__`（模型全名，含 `[1m]`）、`__MODEL_BASE__`（去掉 `[1m]` 的部分，用于 `CLAUDE_CODE_MODEL_CAPABILITIES`）、`__BASE_URL__`（`http://127.0.0.1:3425`）、`__GATEWAY_KEY__`（`deploy/.env` 的 `MAGPIE_GATEWAY_KEY`）。
+- `apply` 保留：`GH_TOKEN`、网关 key（模板不含密钥）、用户自行追加的 env；丢弃已知冲突的遗留键 `ANTHROPIC_MODEL` / `ANTHROPIC_AUTH_TOKEN`。
+- 模板刻意**不含**本机专属项：`statusLine`（ccline 二进制）、`extraKnownMarketplaces`（本机插件市场）、代理变量；`teammateMode: tmux` 需 VPS 装了 tmux，`claude doctor` 会报。
+- 改模板 → `git commit/push` → `upgrade` → `claude apply` 才是完整落地链路。
+
 ## 安全边界（必须遵守）
 
 - 白名单仅放行上述子命令；`uninstall` 不在白名单，需用户人工执行 `bash /opt/clouddock/uninstall.sh`。
@@ -144,5 +164,7 @@ cd /opt/clouddock
 ./clouddock restart <svc>
 ./clouddock logs <svc> --tail=200
 ./clouddock claude
-./clouddock claude set-model 'group/never-stuck[1m]'
+./clouddock claude apply --model 'group/free[1m]'
+./clouddock claude set-model 'group/free[1m]'
+./clouddock claude doctor
 ```

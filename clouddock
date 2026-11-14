@@ -20,8 +20,10 @@ usage() {
   restart <svc|all>       重启指定服务（进程重启，不重读 .env）
   pull <svc>              拉取并重建指定服务镜像
   logs <svc> [--tail=N]   查看服务日志（默认 200 行）
-  claude [show]           查看 VPS 上 agent 的 Claude Code 配置（模型/网关，密钥打码）
-  claude set-model <m>    设置 agent 的 ANTHROPIC_MODEL（如 group/never-stuck）
+  claude [show]           查看 VPS 上 agent 的 Claude Code 配置（模型矩阵/网关，密钥打码）
+  claude apply [--model <m>]  按仓库模板 claude/settings.template.json 渲染 settings.json
+  claude set-model <m>    把所有模型位点改为 <m>（如 group/free[1m]），不动其他配置
+  claude doctor           环境自检（claude/happy/tmux/settings/网关连通）
 
 配置与网关：
   env set KEY[=VALUE] [--svc <svc>] [--stdin]   精确改 .env 并只重建目标服务

@@ -42,20 +42,34 @@ npm install -g happy
 echo "[INFO] 以 $AGENT_USER 安装 Claude Code（原生安装器）..."
 su - "$AGENT_USER" -c 'curl -fsSL https://claude.ai/install.sh | bash'
 
-# 5) 后端走本机 magpie + 可选 GitHub token：写 agent 的 ~/.claude/settings.json
-GATEWAY_KEY="$(grep '^MAGPIE_GATEWAY_KEY=' "$CLOUDDOCK_DIR/deploy/.env" 2>/dev/null | cut -d= -f2- || true)"
-[[ -n "$GATEWAY_KEY" ]] || echo "[WARN] 未找到 MAGPIE_GATEWAY_KEY，稍后请手动补写 settings.json" >&2
-
+# 5) 后端走本机 magpie：用仓库模板渲染 agent 的 ~/.claude/settings.json（单一真源：claude/settings.template.json）
 mkdir -p "$AGENT_HOME/.claude"
-# 用 python3 构造 JSON，避免 token/密钥含特殊字符破坏 JSON；GH_TOKEN 可选
-python3 - "$MAGPIE_URL" "$GATEWAY_KEY" "${GH_TOKEN:-}" > "$AGENT_HOME/.claude/settings.json" <<'PY'
+CLAUDE_MODEL="${CLAUDE_MODEL:-group/free[1m]}"
+if [[ -x "$CLOUDDOCK_DIR/clouddock" ]]; then
+  echo "[INFO] 用仓库模板渲染 Claude Code 配置：model=$CLAUDE_MODEL, base_url=$MAGPIE_URL"
+  GH_TOKEN="${GH_TOKEN:-}" CLAUDE_MODEL="$CLAUDE_MODEL" CLAUDE_BASE_URL="$MAGPIE_URL" \
+    bash "$CLOUDDOCK_DIR/clouddock" claude apply --model "$CLAUDE_MODEL"
+else
+  echo "[WARN] 未找到 $CLOUDDOCK_DIR/clouddock（仓库未克隆），先写最小配置，部署后请跑 clouddock claude apply 收敛" >&2
+  GATEWAY_KEY="$(grep '^MAGPIE_GATEWAY_KEY=' "$CLOUDDOCK_DIR/deploy/.env" 2>/dev/null | cut -d= -f2- || true)"
+  [[ -n "$GATEWAY_KEY" ]] || echo "[WARN] 未找到 MAGPIE_GATEWAY_KEY" >&2
+  # 用 python3 构造 JSON，避免 token/密钥含特殊字符破坏 JSON；GH_TOKEN 可选
+  python3 - "$MAGPIE_URL" "$GATEWAY_KEY" "${GH_TOKEN:-}" "$CLAUDE_MODEL" > "$AGENT_HOME/.claude/settings.json" <<'PY'
 import json, sys
-base_url, gateway_key, gh_token = sys.argv[1], sys.argv[2], sys.argv[3]
-env = {"ANTHROPIC_BASE_URL": base_url, "ANTHROPIC_API_KEY": gateway_key}
+base_url, gateway_key, gh_token, model = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+env = {
+    "ANTHROPIC_BASE_URL": base_url,
+    "ANTHROPIC_API_KEY": gateway_key,
+    "ANTHROPIC_SMALL_FAST_MODEL": model,
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": model,
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": model,
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": model,
+}
 if gh_token:
     env["GH_TOKEN"] = gh_token
-print(json.dumps({"env": env}, ensure_ascii=False, indent=2))
+print(json.dumps({"model": model, "env": env}, ensure_ascii=False, indent=2))
 PY
+fi
 chown -R "$AGENT_USER":"$AGENT_USER" "$AGENT_HOME/.claude"
 chmod 600 "$AGENT_HOME/.claude/settings.json"
 [[ -n "${GH_TOKEN:-}" ]] && echo "[OK] 已写入 GH_TOKEN 到 agent 的 Claude Code 配置"

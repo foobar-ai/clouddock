@@ -94,13 +94,30 @@ case "$sub" in
     exec "$CLOUDDOCK" env "${a[@]:1}"
     ;;
   claude)
-    if [[ "${#a[@]}" -eq 1 ]]; then
-      exec "$CLOUDDOCK" claude
-    fi
-    [[ "${a[1]:-}" == "set-model" && "${#a[@]}" -eq 3 ]] \
-      || deny "claude 仅支持 show 或 set-model <model>"
-    [[ "${a[2]}" =~ ^[^[:space:]]{1,128}$ ]] || deny "非法模型名"
-    exec "$CLOUDDOCK" claude set-model "${a[2]}"
+    MODEL_RE='^[^[:space:]]{1,128}$'
+    act="${a[1]:-show}"
+    case "$act" in
+      show|doctor)
+        [[ "${#a[@]}" -le 2 ]] || deny "claude $act 不接受参数"
+        exec "$CLOUDDOCK" claude "$act"
+        ;;
+      apply)
+        if [[ "${#a[@]}" -eq 2 ]]; then
+          exec "$CLOUDDOCK" claude apply
+        fi
+        [[ "${#a[@]}" -eq 4 && "${a[2]}" == "--model" ]] || deny "claude apply 仅支持 [--model <model>]"
+        [[ "${a[3]}" =~ $MODEL_RE ]] || deny "非法模型名"
+        exec "$CLOUDDOCK" claude apply --model "${a[3]}"
+        ;;
+      set-model)
+        [[ "${#a[@]}" -eq 3 ]] || deny "claude set-model 需且仅需 1 个模型名"
+        [[ "${a[2]}" =~ $MODEL_RE ]] || deny "非法模型名"
+        exec "$CLOUDDOCK" claude set-model "${a[2]}"
+        ;;
+      *)
+        deny "claude 仅支持 show / apply [--model <m>] / set-model <m> / doctor"
+        ;;
+    esac
     ;;
   magpie)
     [[ "${a[1]:-}" == "gwkey" ]] || deny "仅支持 magpie gwkey"
