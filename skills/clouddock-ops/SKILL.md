@@ -45,6 +45,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `magpie gwkey add <name>` | 新增网关密钥（key 只打印一次） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
 | `tools ensure <tool>` | 受控装工具 | apt 官方源；白名单目前仅 `tmux` |
+| `agent git [--check-push]` | agent 的 GitHub 访问诊断 | SSH 资产/认证/git 身份/仓库 remote；`--check-push` = `git push --dry-run` |
 
 `env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
 
@@ -72,6 +73,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「按项目模板收敛 Claude Code 配置 / 恢复参考配置」→ `claude apply --model group/free[1m]`
 - 「Claude Code 是不是装坏了 / 连不上 magpie」→ `claude doctor`
 - 「VPS 缺 tmux / Agent Teams 不能分屏」→ `tools ensure tmux`
+- 「agent 能不能 push GitHub / SSH 有没有配好 / 仓库 remote 是什么」→ `agent git`；要验证写权限 → `agent git --check-push`
 - 「agent 用户怎么选项目目录启动 Claude Code」→ 由用户人工执行 `su - agent -c 'agent-session'`（交互菜单，`--list` 列候选；AI 通道不需要也无法代跑交互）
 - 「打开/管理 magpie Web UI」「magpie 隧道断了 / 打不开」「唤醒 magpie 隧道」→ `magpie-web-tunnel.sh start`（幂等：已在运行直接返回，断了就重连）
 - 「让本机 magpie 用 VPS 的模型/订阅」→ `magpie-gateway-tunnel.sh start` + `magpie gwkey add <名称>`（见 Remote magpie 节）

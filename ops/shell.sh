@@ -141,6 +141,14 @@ case "$sub" in
         ;;
     esac
     ;;
+  agent)
+    [[ "${a[1]:-}" == "git" ]] || deny "仅支持 agent git [--check-push]"
+    if [[ "${#a[@]}" -eq 3 && "${a[2]}" == "--check-push" ]]; then
+      exec "$CLOUDDOCK" agent git --check-push
+    fi
+    [[ "${#a[@]}" -eq 2 ]] || deny "agent git 仅支持 [--check-push]"
+    exec "$CLOUDDOCK" agent git
+    ;;
   tools)
     [[ "${a[1]:-}" == "ensure" ]] || deny "仅支持 tools ensure <tool>"
     [[ "${#a[@]}" -eq 3 ]] || deny "tools ensure 需且仅需 1 个工具名"

@@ -61,6 +61,7 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `magpie gwkey add <name>` | 新增网关密钥（一次性返回） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
 | `tools ensure <tool>` | 受控安装工具 | apt 官方源；白名单目前只放行 `tmux` |
+| `agent git [--check-push]` | agent 的 GitHub 访问诊断 | SSH 资产/认证身份/git 身份/仓库 remote；`--check-push` 走 `push --dry-run`（不写入） |
 
 `env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
 
