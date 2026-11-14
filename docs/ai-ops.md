@@ -60,6 +60,7 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `magpie gwkey list` | 列 magpie 网关密钥（打码） |
 | `magpie gwkey add <name>` | 新增网关密钥（一次性返回） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
+| `tools ensure <tool>` | 受控安装工具 | apt 官方源；白名单目前只放行 `tmux` |
 
 `env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
 
@@ -99,7 +100,7 @@ bash scripts/clouddock-ops-ssh.sh status
 
 ## 安全模型
 
-- **白名单**：`status/health/renew/reissue/upgrade/apply/services/up/start/stop/pull/restart/logs/env set/reload/magpie gwkey/claude show|apply|set-model|doctor`；`uninstall` 不纳入，需人工执行。
+- **白名单**：`status/health/renew/reissue/upgrade/apply/services/up/start/stop/pull/restart/logs/env set/reload/magpie gwkey/claude show|apply|set-model|doctor/tools ensure tmux`；`uninstall` 不纳入，需人工执行。
 - **参数校验**：服务名限 `^[a-z0-9][a-z0-9-]{0,31}$`；`--tail=N` 限正整数；`env set` 仅允许 `MAGPIE_WEB_KEY/MAGPIE_PUBLIC_URL/TRAFFIC_QUOTA_GB`；杜绝命令注入；拒绝的调用记录到 syslog（`logger -t clouddock-ops`）。
 - **密钥不落日志**：`env set` 的拒绝日志会脱敏（`KEY=***`）；密钥优先 `--stdin`，避免进 shell 历史与 SSH 命令行。
 - **单服务优先**：`up/start/stop/pull` 只作用于目标服务；`apply` 才是全量，避免误重启无关服务。
@@ -130,6 +131,7 @@ cd /opt/clouddock
 ./clouddock claude apply --model 'group/free[1m]'
 ./clouddock claude set-model 'group/free[1m]'
 ./clouddock claude doctor
+./clouddock tools ensure tmux
 ```
 
 > 详见 `skills/clouddock-ops/SKILL.md`（AI 侧调用约定）与 `docs/add-service.md`（服务结构约定）。

@@ -170,6 +170,7 @@ log "开始按序执行各阶段脚本..."
 "$SCRIPT_DIR/steps/04-cert.sh"
 "$SCRIPT_DIR/steps/05-services.sh"
 "$SCRIPT_DIR/steps/06-openresty-site.sh"
+"$SCRIPT_DIR/steps/07-agent-tools.sh"
 
 ok "全部阶段执行完毕。"
 print_finish

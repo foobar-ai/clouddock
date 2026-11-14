@@ -29,6 +29,7 @@ usage() {
   env set KEY[=VALUE] [--svc <svc>] [--stdin]   精确改 .env 并只重建目标服务
   reload                  校验并重载 OpenResty
   magpie gwkey list|add <name>|remove <name|id>  magpie 网关密钥
+  tools ensure <tool>     受控安装 VPS 工具（apt 官方源，白名单：tmux）
 
 状态与证书：
   status                  状态巡检（容器/证书/流量/磁盘/git），JSON 输出
@@ -62,5 +63,6 @@ case "$cmd" in
   env)      bash "$SCRIPT_DIR/ops/env.sh" "$@" ;;
   reload)   bash "$SCRIPT_DIR/ops/reload.sh" "$@" ;;
   magpie)   bash "$SCRIPT_DIR/ops/magpie.sh" "$@" ;;
+  tools)    bash "$SCRIPT_DIR/ops/tools.sh" "$@" ;;
   *)        usage >&2; exit 2 ;;
 esac

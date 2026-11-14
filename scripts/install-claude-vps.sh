@@ -89,6 +89,16 @@ for f in "$AGENT_HOME/.profile" "$AGENT_HOME/.bashrc"; do
     || echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$f"
 done
 
+# 7) 项目会话启动器：选择项目目录后启动 happy claude（不再每次都落在 agent 家目录）
+if [[ -f "$CLOUDDOCK_DIR/scripts/agent-session.sh" ]]; then
+  install -m 0755 "$CLOUDDOCK_DIR/scripts/agent-session.sh" /usr/local/bin/agent-session
+  mkdir -p "$AGENT_HOME/projects"
+  chown "$AGENT_USER":"$AGENT_USER" "$AGENT_HOME/projects"
+  echo "[OK] 已安装 /usr/local/bin/agent-session（项目目录候选：$AGENT_HOME/projects/*）"
+else
+  echo "[WARN] 未找到 $CLOUDDOCK_DIR/scripts/agent-session.sh，跳过项目启动器" >&2
+fi
+
 echo ""
 echo "======================================================"
 echo " 安装完成。自检："
@@ -99,6 +109,8 @@ echo " 后续两步（需你本人在 VPS 终端操作）："
 echo " 1) 配对手机（终端出二维码，手机 Happy App 扫码）："
 echo "      su - $AGENT_USER -c 'happy auth login'"
 echo "    选择 Mobile App，扫码完成配对。"
-echo " 2) 启动 Claude Code（手机即可接管）："
-echo "      su - $AGENT_USER -c 'happy claude'"
+echo " 2) 启动 Claude Code（手机即可接管；先选项目目录）："
+echo "      su - $AGENT_USER -c 'agent-session'            # 交互选择项目目录"
+echo "      su - $AGENT_USER -c 'agent-session <项目名>'    # 直达 ~/projects/<项目名>"
+echo "    项目都放在 $AGENT_HOME/projects/ 下（git clone 到这里即可被列出）。"
 echo "======================================================"

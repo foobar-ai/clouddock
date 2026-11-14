@@ -100,9 +100,12 @@ curl -fsSL https://raw.githubusercontent.com/foobar-ai/clouddock/main/scripts/in
 装完后（需你本人在 VPS 终端操作、配手机）：
 
 ```bash
-su - agent -c 'happy auth login'   # 终端出二维码，手机 Happy App 扫
-su - agent -c 'happy claude'       # 启动，手机接管
+su - agent -c 'happy auth login'        # 终端出二维码，手机 Happy App 扫
+su - agent -c 'agent-session'           # 选项目目录后启动（交互菜单，上次选择置顶）
+su - agent -c 'agent-session <项目名>'   # 直达 ~/projects/<项目名>
 ```
+
+> `agent-session` 是项目启动器：候选为 `~/projects/*` 与 `~` 下最多 3 层的 git 仓库（跳过隐藏目录与 `node_modules`），选定后 `cd` 进去再启动 Claude Code，不再固定落在 agent 家目录。`agent-session --list` 可纯文本列出候选；仓库统一 `git clone` 到 `~/projects/` 即会被列出。
 
 > 安全：`GH_TOKEN` 只写入 `~agent/.claude/settings.json`（权限 600），不进 git；token 到期记得轮换。
 
@@ -118,7 +121,7 @@ bash scripts/clouddock-ops-ssh.sh claude doctor                       # 自检�
 ```
 
 - `apply` 保留模板外的敏感与环境项（`GH_TOKEN`、`deploy/.env` 的 `MAGPIE_GATEWAY_KEY`、你自行追加的 env），并丢弃会与模型矩阵冲突的遗留键 `ANTHROPIC_MODEL` / `ANTHROPIC_AUTH_TOKEN`。
-- 模板不含本机专属项：`statusLine`（ccline 二进制）、`extraKnownMarketplaces`（本机插件市场）、代理变量（`HTTPS_PROXY` 等）。`teammateMode: tmux` 需 VPS 装有 tmux，`claude doctor` 会提示。
+- 模板不含本机专属项：`statusLine`（ccline 二进制）、`extraKnownMarketplaces`（本机插件市场）、代理变量（`HTTPS_PROXY` 等）。`teammateMode: tmux` 需 VPS 装有 tmux：`bash scripts/clouddock-ops-ssh.sh tools ensure tmux`（apt 官方源，受控白名单只放行 tmux），`claude doctor` 会显示是否就绪。
 - 模型名支持 `group/xxx[1m]` 形式；`CLAUDE_CODE_MODEL_CAPABILITIES` 自动取去掉 `[1m]` 的基础名（如 `group/free=effort`）。
 
 ### 证书与 Cloudflare 代理（小黄云）
@@ -239,7 +242,8 @@ clouddock/
 │       ├── 03-acme.sh
 │       ├── 04-cert.sh
 │       ├── 05-services.sh         #   聚合启动所有服务
-│       └── 06-openresty-site.sh
+│       ├── 06-openresty-site.sh
+│       └── 07-agent-tools.sh      #   agent 项目启动器（有 agent 用户时安装）
 ├── ops/                           # 运维脚本（clouddock 子命令实现）
 │   ├── lib.sh                     #   运维公共库（JSON/脱敏）
 │   ├── shell.sh                   #   SSH 白名单受限入口
@@ -247,6 +251,7 @@ clouddock/
 │   ├── renew.sh / upgrade.sh      #   续期 / 升级
 │   ├── apply.sh / restart.sh / logs.sh
 │   ├── claude.sh                  #   Claude Code 配置（模板渲染/改模型/自检）
+│   ├── tools.sh                   #   受控安装工具（白名单：tmux）
 │   └── cron-install.sh            #   定时巡检安装
 ├── services/                      # 服务定义（每服务一目录，可扩展）
 │   ├── new-api/
@@ -266,6 +271,7 @@ clouddock/
 │       └── new-api-https.conf     #   HTTPS 代理阶段
 ├── scripts/                       # 本地辅助脚本
 │   ├── claude-code-tunnel.sh      #   本地 SSH 隧道（链路 A）
+│   ├── agent-session.sh           #   VPS 上选项目目录后启动 happy claude
 │   ├── add-service.sh             #   新服务脚手架
 │   ├── install-ops.sh             #   一键打通 AI 运维白名单通道
 │   └── clouddock-ops-ssh.sh       #   本地调用 wrapper

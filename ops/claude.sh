@@ -189,7 +189,31 @@ checks = {
     "claude": os.access(os.path.join(agent_home, ".local/bin/claude"), os.X_OK),
     "happy": shutil.which("happy") is not None,
     "tmux": shutil.which("tmux") is not None,
+    "agent_session": shutil.which("agent-session") is not None,
 }
+
+
+def find_projects(home):
+    out = []
+    pdir = os.path.join(home, "projects")
+    if os.path.isdir(pdir):
+        for n in sorted(os.listdir(pdir)):
+            p = os.path.join(pdir, n)
+            if os.path.isdir(p):
+                out.append(p)
+    for root, dirs, _files in os.walk(home):
+        depth = root[len(home):].count(os.sep)
+        if root != home and os.path.isdir(os.path.join(root, ".git")):
+            out.append(root)
+        if depth >= 3:
+            dirs[:] = []
+        else:
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d != "node_modules"]
+    return sorted(set(out))
+
+
+checks["agent_projects"] = find_projects(agent_home)
+
 try:
     with open(settings, encoding="utf-8") as f:
         json.load(f)
@@ -207,7 +231,7 @@ except Exception:
 checks["ok"] = all([checks["claude"], checks["happy"], checks["settings_json"],
                     checks["magpie_gateway_http"] not in ("000", "n/a", "")])
 if not checks["tmux"]:
-    checks["note_tmux"] = "未装 tmux：teammateMode=tmux 不可用，删掉该项或 apt-get install -y tmux"
+    checks["note_tmux"] = "未装 tmux：teammateMode=tmux 不可用，执行 clouddock tools ensure tmux"
 print(json.dumps(checks, ensure_ascii=False, indent=2))
 PY
 }

@@ -44,6 +44,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `magpie gwkey list` | 列 magpie 网关密钥（打码） |
 | `magpie gwkey add <name>` | 新增网关密钥（key 只打印一次） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
+| `tools ensure <tool>` | 受控装工具 | apt 官方源；白名单目前仅 `tmux` |
 
 `env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
 
@@ -70,6 +71,8 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「VPS 上 Claude Code 用哪个模型 / 改成 group/xxx」→ `claude` / `claude set-model group/xxx`
 - 「按项目模板收敛 Claude Code 配置 / 恢复参考配置」→ `claude apply --model group/free[1m]`
 - 「Claude Code 是不是装坏了 / 连不上 magpie」→ `claude doctor`
+- 「VPS 缺 tmux / Agent Teams 不能分屏」→ `tools ensure tmux`
+- 「agent 用户怎么选项目目录启动 Claude Code」→ 由用户人工执行 `su - agent -c 'agent-session'`（交互菜单，`--list` 列候选；AI 通道不需要也无法代跑交互）
 - 「打开/管理 magpie Web UI」「magpie 隧道断了 / 打不开」「唤醒 magpie 隧道」→ `magpie-web-tunnel.sh start`（幂等：已在运行直接返回，断了就重连）
 - 「让本机 magpie 用 VPS 的模型/订阅」→ `magpie-gateway-tunnel.sh start` + `magpie gwkey add <名称>`（见 Remote magpie 节）
 
@@ -132,12 +135,14 @@ bash scripts/clouddock-ops-ssh.sh claude doctor                           # 自�
 - `apply` 保留：`GH_TOKEN`、网关 key（模板不含密钥）、用户自行追加的 env；丢弃已知冲突的遗留键 `ANTHROPIC_MODEL` / `ANTHROPIC_AUTH_TOKEN`。
 - 模板刻意**不含**本机专属项：`statusLine`（ccline 二进制）、`extraKnownMarketplaces`（本机插件市场）、代理变量；`teammateMode: tmux` 需 VPS 装了 tmux，`claude doctor` 会报。
 - 改模板 → `git commit/push` → `upgrade` → `claude apply` 才是完整落地链路。
+- 启动方式：agent 用户执行 `agent-session`（`/usr/local/bin/agent-session`，由 bootstrap `07-agent-tools.sh` 随 `upgrade` 安装）选目录后启动；候选 `~/projects/*` 与 `~` 下 3 层 git 仓库，`--list` 纯文本列候选。`claude doctor` 的 `agent_projects` 字段可直接看当前候选。
 
 ## 安全边界（必须遵守）
 
 - 白名单仅放行上述子命令；`uninstall` 不在白名单，需用户人工执行 `bash /opt/clouddock/uninstall.sh`。
 - `env set` 仅允许白名单键；密钥优先用 `--stdin`；拒绝日志会自动脱敏（值不进 syslog）。
 - `up/stop/pull` 只影响目标服务；`apply` 才是全量，非必要不用。
+- `tools ensure` 是受控安装：只放行 `tmux`，走 Debian 官方 apt 源，不接受任意包名。
 - 专用 key 无 pty / agent-forwarding；端口转发仅放行 `permitopen="127.0.0.1:3430"`（magpie Web）与 `permitopen="127.0.0.1:3425"`（magpie 网关），其余目标一律拒绝；即使提示词被注入也越不过白名单。
 - 日志/status 输出自动脱敏（`.env`、`dnsapi.env` 的敏感值替换为 `***`）。
 - 绝不把 `.clouddock/`（私钥）或 VPS 上的 `.env` / `dnsapi.env` 内容写入输出、日志或任何沉淀内容。
@@ -167,4 +172,5 @@ cd /opt/clouddock
 ./clouddock claude apply --model 'group/free[1m]'
 ./clouddock claude set-model 'group/free[1m]'
 ./clouddock claude doctor
+./clouddock tools ensure tmux
 ```

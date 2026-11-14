@@ -141,6 +141,14 @@ case "$sub" in
         ;;
     esac
     ;;
+  tools)
+    [[ "${a[1]:-}" == "ensure" ]] || deny "仅支持 tools ensure <tool>"
+    [[ "${#a[@]}" -eq 3 ]] || deny "tools ensure 需且仅需 1 个工具名"
+    case "${a[2]}" in
+      tmux) exec "$CLOUDDOCK" tools ensure tmux ;;
+      *)    deny "不在安装白名单：${a[2]}" ;;
+    esac
+    ;;
   *)
     deny "不允许的命令：$sub"
     ;;
