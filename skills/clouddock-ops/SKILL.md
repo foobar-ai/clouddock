@@ -66,7 +66,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「重载 nginx/OpenResty」→ `reload`
 - 「列 magpie 网关密钥」→ `magpie gwkey list`
 - 「VPS 上 Claude Code 用哪个模型 / 改成 group/xxx」→ `claude` / `claude set-model group/xxx`
-- 「打开/管理 magpie Web UI」→ 本地隧道（见下节）
+- 「打开/管理 magpie Web UI」「magpie 隧道断了 / 打不开」「唤醒 magpie 隧道」→ `magpie-web-tunnel.sh start`（幂等：已在运行直接返回，断了就重连）
 - 「让本机 magpie 用 VPS 的模型/订阅」→ `magpie-gateway-tunnel.sh start` + `magpie gwkey add <名称>`（见 Remote magpie 节）
 
 ## status 判读阈值
@@ -97,6 +97,8 @@ bash scripts/magpie-web-tunnel.sh stop     # 关闭隧道
 `start` 成功后，把返回的「另一个 MAGPIE」填法转告用户即可：地址 `http://127.0.0.1:3431`（本地端口）、密钥取 VPS `deploy/.env` 的 `MAGPIE_WEB_KEY`。不要自行在输出/日志里打印密钥值。
 
 隧道复用同一把 `.clouddock/ops_key`（`install-ops.sh` 已授权 `permitopen="127.0.0.1:3430"`，只允许转发到 magpie Web 端口），无需额外密钥；`-N` 纯转发不触发 `command=` 白名单命令。
+
+隧道**不会自动重连**（Mac 睡眠、网络切换、SSH 超时都会断）。用户说「隧道断了 / 打不开 / 唤醒一下」时，直接重跑 `start` 即可（幂等）。
 
 ## Remote magpie（本机使用 VPS 模型）
 
