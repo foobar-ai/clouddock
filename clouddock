@@ -31,6 +31,8 @@ usage() {
   magpie gwkey list|add <name>|remove <name|id>  magpie 网关密钥
   tools ensure <tool>     受控安装 VPS 工具（apt 官方源，白名单：tmux）
   agent git [--check-push]  agent 的 GitHub 访问诊断（SSH 资产/认证/仓库 remote，--check-push 走 dry-run）
+  agent git-setup         配置 git 走 PAT（credential helper + git@github.com: → https 重写）
+  agent gh-token set      stdin 传入新 PAT，写入 ~agent/.claude/settings.json
 
 状态与证书：
   status                  状态巡检（容器/证书/流量/磁盘/git），JSON 输出

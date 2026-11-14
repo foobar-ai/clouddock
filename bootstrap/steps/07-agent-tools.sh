@@ -13,11 +13,15 @@ AGENT_USER="agent"
 AGENT_HOME="/home/${AGENT_USER}"
 SRC="$DEPLOY_DIR/scripts/agent-session.sh"
 DST="/usr/local/bin/agent-session"
+HELPER_SRC="$DEPLOY_DIR/scripts/git-credential-clouddock.sh"
+HELPER_DST="/usr/local/bin/git-credential-clouddock"
 
 agent_done() {
   # 未启用 agent：视为无需处理（不阻塞安装/升级）
   id "$AGENT_USER" >/dev/null 2>&1 || return 0
-  [[ -x "$DST" ]] && cmp -s "$SRC" "$DST"
+  [[ -x "$DST" ]] && cmp -s "$SRC" "$DST" || return 1
+  [[ -x "$HELPER_DST" ]] && cmp -s "$HELPER_SRC" "$HELPER_DST" || return 1
+  return 0
 }
 
 agent_run() {
@@ -26,6 +30,13 @@ agent_run() {
   mkdir -p "$AGENT_HOME/projects"
   chown "$AGENT_USER":"$AGENT_USER" "$AGENT_HOME/projects"
   ok "已安装项目启动器：$DST（候选目录 $AGENT_HOME/projects/*）"
+
+  if [[ -f "$HELPER_SRC" ]]; then
+    install -m 0755 "$HELPER_SRC" "$HELPER_DST"
+    ok "已安装 git 凭证助手：$HELPER_DST（PAT 走 clouddock agent git-setup 启用）"
+  else
+    warn "未找到 $HELPER_SRC，跳过 git 凭证助手" >&2
+  fi
 }
 
 run_step "安装 agent 项目启动器" agent_done agent_run

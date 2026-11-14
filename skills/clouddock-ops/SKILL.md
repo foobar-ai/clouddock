@@ -46,6 +46,8 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
 | `tools ensure <tool>` | 受控装工具 | apt 官方源；白名单目前仅 `tmux` |
 | `agent git [--check-push]` | agent 的 GitHub 访问诊断 | SSH 资产/认证/git 身份/仓库 remote；`--check-push` = `git push --dry-run` |
+| `agent git-setup` | 让 git 走 PAT | 装 credential helper（读 settings.json 的 `GH_TOKEN`）+ `git@github.com:` → https 重写 |
+| `agent gh-token set` | 轮换 PAT | token 从 stdin 传入，写入 settings.json 的 `GH_TOKEN`（600） |
 
 `env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
 
@@ -74,6 +76,8 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「Claude Code 是不是装坏了 / 连不上 magpie」→ `claude doctor`
 - 「VPS 缺 tmux / Agent Teams 不能分屏」→ `tools ensure tmux`
 - 「agent 能不能 push GitHub / SSH 有没有配好 / 仓库 remote 是什么」→ `agent git`；要验证写权限 → `agent git --check-push`
+- 「让 agent 用 PAT 推代码 / git 提示要 Username」→ `agent git-setup`（PAT 范围与 Contents 写权限由用户在 GitHub 侧保证）
+- 「轮换 GitHub PAT」→ `printf '%s' "$TOKEN" | clouddock-ops-ssh.sh agent gh-token set`（token 只走 stdin）
 - 「agent 用户怎么选项目目录启动 Claude Code」→ 由用户人工执行 `su - agent -c 'agent-session'`（交互菜单，`--list` 列候选；AI 通道不需要也无法代跑交互）
 - 「打开/管理 magpie Web UI」「magpie 隧道断了 / 打不开」「唤醒 magpie 隧道」→ `magpie-web-tunnel.sh start`（幂等：已在运行直接返回，断了就重连）
 - 「让本机 magpie 用 VPS 的模型/订阅」→ `magpie-gateway-tunnel.sh start` + `magpie gwkey add <名称>`（见 Remote magpie 节）
@@ -145,6 +149,7 @@ bash scripts/clouddock-ops-ssh.sh claude doctor                           # 自�
 - `env set` 仅允许白名单键；密钥优先用 `--stdin`；拒绝日志会自动脱敏（值不进 syslog）。
 - `up/stop/pull` 只影响目标服务；`apply` 才是全量，非必要不用。
 - `tools ensure` 是受控安装：只放行 `tmux`，走 Debian 官方 apt 源，不接受任意包名。
+- `agent gh-token set` 的 token 只走 stdin，不进 SSH 命令行/syslog；输出只显示前 11 位。绝不把 PAT 明文写进任何文件、日志或沉淀内容。
 - 专用 key 无 pty / agent-forwarding；端口转发仅放行 `permitopen="127.0.0.1:3430"`（magpie Web）与 `permitopen="127.0.0.1:3425"`（magpie 网关），其余目标一律拒绝；即使提示词被注入也越不过白名单。
 - 日志/status 输出自动脱敏（`.env`、`dnsapi.env` 的敏感值替换为 `***`）。
 - 绝不把 `.clouddock/`（私钥）或 VPS 上的 `.env` / `dnsapi.env` 内容写入输出、日志或任何沉淀内容。

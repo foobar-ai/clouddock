@@ -124,6 +124,20 @@ bash scripts/clouddock-ops-ssh.sh claude doctor                       # 自检�
 - 模板不含本机专属项：`statusLine`（ccline 二进制）、`extraKnownMarketplaces`（本机插件市场）、代理变量（`HTTPS_PROXY` 等）。`teammateMode: tmux` 需 VPS 装有 tmux：`bash scripts/clouddock-ops-ssh.sh tools ensure tmux`（apt 官方源，受控白名单只放行 tmux），`claude doctor` 会显示是否就绪。
 - 模型名支持 `group/xxx[1m]` 形式；`CLAUDE_CODE_MODEL_CAPABILITIES` 自动取去掉 `[1m]` 的基础名（如 `group/free=effort`）。
 
+#### agent 的 GitHub 写权限（PAT）
+
+agent 用的是同一枚细粒度 PAT：存在 `~agent/.claude/settings.json` 的 `GH_TOKEN`（600），git 通过凭证助手读它，不再复制第二份 token。
+
+```bash
+bash scripts/clouddock-ops-ssh.sh agent git-setup   # 配置凭证助手 + git@github.com: → https 重写
+bash scripts/clouddock-ops-ssh.sh agent git         # 诊断：SSH 资产 / git 身份 / 仓库 remote
+printf '%s' "$NEW_TOKEN" | bash scripts/clouddock-ops-ssh.sh agent gh-token set   # 轮换 PAT（走 stdin）
+```
+
+- 助手 `/usr/local/bin/git-credential-clouddock` 只在 `host=github.com` 时返回凭证（`x-access-token` + PAT）。
+- `git@github.com:owner/repo` 会被自动重写成 `https://github.com/owner/repo`，所以 SSH 写法的 clone/push 也能走 PAT。
+- PAT 必须把目标仓库加入 **Repository access**，权限 **Contents: Read and write**，否则 push 返回 403（`agent git --check-push` 可验证写权限，只做 dry-run 不写入）。
+
 ### 证书与 Cloudflare 代理（小黄云）
 
 若域名开启了 Cloudflare 代理（橙云），HTTP-01 的签发与**自动续期**都会被 CF 边缘节点拦截：只要开了「Always Use HTTPS / Automatic HTTPS Rewrites」，HTTP 验证请求会被 301 到 HTTPS，导致验证失败。两种处理方式：

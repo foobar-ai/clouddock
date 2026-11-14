@@ -142,12 +142,26 @@ case "$sub" in
     esac
     ;;
   agent)
-    [[ "${a[1]:-}" == "git" ]] || deny "仅支持 agent git [--check-push]"
-    if [[ "${#a[@]}" -eq 3 && "${a[2]}" == "--check-push" ]]; then
-      exec "$CLOUDDOCK" agent git --check-push
-    fi
-    [[ "${#a[@]}" -eq 2 ]] || deny "agent git 仅支持 [--check-push]"
-    exec "$CLOUDDOCK" agent git
+    case "${a[1]:-}" in
+      git)
+        if [[ "${#a[@]}" -eq 3 && "${a[2]}" == "--check-push" ]]; then
+          exec "$CLOUDDOCK" agent git --check-push
+        fi
+        [[ "${#a[@]}" -eq 2 ]] || deny "agent git 仅支持 [--check-push]"
+        exec "$CLOUDDOCK" agent git
+        ;;
+      git-setup)
+        [[ "${#a[@]}" -eq 2 ]] || deny "agent git-setup 不接受参数"
+        exec "$CLOUDDOCK" agent git-setup
+        ;;
+      gh-token)
+        [[ "${a[2]:-}" == "set" && "${#a[@]}" -eq 3 ]] || deny "仅支持 agent gh-token set（token 走 stdin）"
+        exec "$CLOUDDOCK" agent gh-token set --stdin
+        ;;
+      *)
+        deny "agent 仅支持 git / git-setup / gh-token set"
+        ;;
+    esac
     ;;
   tools)
     [[ "${a[1]:-}" == "ensure" ]] || deny "仅支持 tools ensure <tool>"
