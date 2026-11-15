@@ -131,9 +131,19 @@ case "$sub" in
       deny "仅支持 magpie plugin list | plugin options <name>"
     fi
     if [[ "${a[1]:-}" == "probe" ]]; then
-      [[ "${#a[@]}" -eq 3 ]] || deny "magpie probe 需且仅需 1 个模型名"
+      [[ "${#a[@]}" -ge 3 && "${#a[@]}" -le 5 ]] || deny "magpie probe 需 1 个模型名，可选 --max-tokens=N / --thinking=N"
       [[ "${a[2]}" =~ ^[^[:space:]]{1,128}$ ]] || deny "非法模型名"
-      exec "$CLOUDDOCK" magpie probe "${a[2]}"
+      pargs=()
+      i=3
+      while [[ $i -lt ${#a[@]} ]]; do
+        case "${a[$i]}" in
+          --max-tokens=[0-9]*) pargs+=("${a[$i]}") ;;
+          --thinking=[0-9]*)   pargs+=("${a[$i]}") ;;
+          *)                   deny "magpie probe 仅支持 --max-tokens=N / --thinking=N" ;;
+        esac
+        i=$((i + 1))
+      done
+      exec "$CLOUDDOCK" magpie probe "${a[2]}" "${pargs[@]}"
     fi
     [[ "${a[1]:-}" == "gwkey" ]] || deny "仅支持 magpie gwkey / plugin list / probe"
     case "${a[2]:-}" in

@@ -17,15 +17,29 @@ usage() {
 # 只读探针：向本机网关发一次最小请求（max_tokens=8），回显 HTTP 码 + 响应摘要 + 网关日志里的实际路由目标。
 # 用于验证模型重定向（model-map 中间件）是否生效，不修改任何配置。
 probe_model() {
-  local model="${1:-}" key body resp code payload logs
-  [[ "$model" =~ ^[^[:space:]]{1,128}$ ]] || die "用法: clouddock magpie probe <model>"
+  local model="" max_tokens=8 thinking="" key body resp code payload logs
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --max-tokens=*) max_tokens="${1#--max-tokens=}"; shift ;;
+      --thinking=*)   thinking="${1#--thinking=}"; shift ;;
+      -*)             die "未知参数：$1" ;;
+      *)              model="$1"; shift ;;
+    esac
+  done
+  [[ "$model" =~ ^[^[:space:]]{1,128}$ ]] || die "用法: clouddock magpie probe <model> [--max-tokens=N] [--thinking=N]"
+  [[ "$max_tokens" =~ ^[0-9]{1,7}$ ]] || die "非法 --max-tokens"
+  [[ -z "$thinking" || "$thinking" =~ ^[0-9]{1,6}$ ]] || die "非法 --thinking"
   key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
   [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
 
-  body="$(python3 - "$model" <<'PY'
+  body="$(python3 - "$model" "$max_tokens" "$thinking" <<'PY'
 import json, sys
-print(json.dumps({"model": sys.argv[1], "max_tokens": 8,
-                  "messages": [{"role": "user", "content": "ping"}]}))
+model, max_tokens, thinking = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+body = {"model": model, "max_tokens": max_tokens,
+        "messages": [{"role": "user", "content": "ping"}]}
+if thinking:
+    body["thinking"] = {"type": "enabled", "budget_tokens": int(thinking)}
+print(json.dumps(body))
 PY
 )"
 
