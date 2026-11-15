@@ -38,27 +38,46 @@ gateway: claude's call to claude-opus-5 on (none) failed: 404 after 2.017s: unkn
 
 ### A-1 当前采用：`@magpie-community/middleware-model-map`
 
-已手动安装。它把请求体里的 `model` 按映射表改写后再转发，回复仍以请求名返回。
+已安装并生效。它把请求体里的 `model` 按映射表改写后再转发；回复里的模型名则**还原成请求名**（Claude Code 靠这个名字估算上下文窗口）。
 
-```bash
-# 插件状态（应显示 model-map on）
-docker exec magpie magpie plugin list
+当前配置：
 
-# 设置/更新映射表（示例：把所有会被选中的 Anthropic 具体 ID 指向路由组）
-docker exec magpie magpie plugin options model-map '{"mapping":{
-  "claude-opus-5":"group/free",
-  "claude-sonnet-4-5":"group/free",
-  "claude-haiku-4-5":"group/free"
-}}'
+```json
+{"mapping":{"/^claude-(opus|sonnet|haiku|3)[-.].*$/":"group/free[1m]"}}
 ```
 
-**固有局限：只能精确枚举**。遥控端清单里出现任何没写进 `mapping` 的名字（新版本、带日期后缀的 `claude-sonnet-4-5-20250929` 等）仍会 404。因此：
+**关键：正则必须整串锚定（结尾 `.*$`）。** 插件对正则键采用 `model.replace(regex, target)` 的替换语义——只替换匹配到的那一段，未匹配的尾巴原样拼接：
 
-- 升级 Claude Code / 遥控端后，先跑一次 `agent sessions --errors` 看有没有新模型名报错；
-- 有则补进 `mapping`；
-- 若嫌维护麻烦，改用 A-2 的前缀匹配写法。
+| 正则写法 | 请求 | 实际结果 |
+| --- | --- | --- |
+| `/^claude-(opus\|sonnet\|haiku\|3)[-.]/`（缺结尾锚定） | `claude-opus-5` | `group/free[1m]5` ❌ 404 unknown model |
+| `/^claude-(opus\|sonnet\|haiku\|3)[-.].*$/`（整串） | `claude-opus-5` | `group/free[1m]` ✅ 200 |
 
-回滚：在 magpie Web UI → Plugins 关掉该插件，或 `docker exec magpie magpie plugin remove model-map`（以实际 CLI 子命令为准）；必要时 `docker restart magpie`。
+target 写 `group/free[1m]` 或 `group/free` 都可以：magpie 自身识别 `[1m]` 后缀（对应 1M 上下文 beta 头），实测两者均 200。
+
+查看/修改（只读查看不要传 JSON）：
+
+```bash
+docker exec magpie magpie plugin options model-map            # 读取当前配置
+docker exec magpie magpie plugin options model-map '<json>'   # 写入
+docker exec magpie magpie plugin list                         # 是否 on
+```
+
+实测记录（`clouddock magpie probe <model>`，真实请求）：
+
+| 请求 model | 结果 |
+| --- | --- |
+| `group/free` / `group/free[1m]` | 200（基线，组可路由） |
+| `claude-opus-5` / `claude-opus-4-5` | 200 |
+| `claude-sonnet-4-5-20250929` | 200（带日期后缀也覆盖） |
+| `claude-haiku-4-5` | 200 |
+| `anthropic/claude-opus-5`（带 provider 前缀） | 不匹配规则，原样透传（将来接入官方供应商不会被误伤） |
+
+局限：精确键（如 `"claude-opus-5"`）只能逐条枚举，只有正则键能覆盖变体；若遥控端出现全新系列（如未来的 `claude-haiku-9`），需把新系列名补进正则。
+
+升级 Claude Code / 遥控端后，用 `clouddock agent sessions --errors` + `clouddock magpie probe <新模型名>` 确认没有漏网模型。
+
+回滚：magpie Web UI → Plugins 关闭插件，或 `docker exec magpie magpie plugin remove model-map`（以实际 CLI 子命令为准）；必要时 `docker restart magpie`。
 
 ### A-2 备选：自写 `onRequest` 中间件（前缀匹配，一次覆盖所有变体）
 
@@ -162,5 +181,7 @@ bash scripts/clouddock-ops-ssh.sh agent happy --file=<日志名> --tail=200 --gr
 | 按模板重渲染配置 | `clouddock claude apply --model 'group/free[1m]'` |
 | 只换模型（全位点） | `clouddock claude set-model 'group/free[1m]'` |
 | magpie 插件状态 | `clouddock magpie plugin list` |
+| 查看/修改 model-map 配置 | `clouddock magpie plugin options model-map` |
+| 探一次真实请求（验证映射） | `clouddock magpie probe <model>` |
 | Claude Code 会话报错 | `clouddock agent sessions --errors` |
 | Happy 日志/配置 | `clouddock agent happy --tail=200 [--file=xxx] [--grep=xxx]` |

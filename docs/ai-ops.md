@@ -61,6 +61,8 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `magpie gwkey add <name>` | 新增网关密钥（一次性返回） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
 | `magpie plugin list` | 插件状态（只读） | 模型重定向插件是否生效看这里 |
+| `magpie plugin options <name>` | 读插件配置（只读） | 如 `plugin options model-map` 查映射表 |
+| `magpie probe <model>` | 网关探针 | 真发一次 `max_tokens=8` 请求，回 HTTP 码 + 实际路由到的模型名 |
 | `tools ensure <tool>` | 受控安装工具 | apt 官方源；白名单目前只放行 `tmux` |
 | `agent git [--check-push]` | agent 的 GitHub 访问诊断 | SSH 资产/认证身份/git 身份/仓库 remote；`--check-push` 走 `push --dry-run`（不写入） |
 | `agent git-setup` | 让 git 走 PAT | 安装 credential helper + `git@github.com:` → https 重写 |
