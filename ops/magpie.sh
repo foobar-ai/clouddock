@@ -95,6 +95,14 @@ case "$group" in
         ;;
     esac
     ;;
+  group)
+    sub="${1:-}"
+    case "$sub" in
+      "")     docker exec magpie magpie group ;;
+      list)   docker exec magpie magpie group list ;;
+      *)      usage ;;
+    esac
+    ;;
   plugin)
     sub="${1:-}"
     case "$sub" in

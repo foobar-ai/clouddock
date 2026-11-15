@@ -130,6 +130,15 @@ case "$sub" in
       fi
       deny "仅支持 magpie plugin list | plugin options <name>"
     fi
+    if [[ "${a[1]:-}" == "group" ]]; then
+      if [[ "${#a[@]}" -eq 2 ]]; then
+        exec "$CLOUDDOCK" magpie group
+      fi
+      if [[ "${#a[@]}" -eq 3 && "${a[2]}" == "list" ]]; then
+        exec "$CLOUDDOCK" magpie group list
+      fi
+      deny "仅支持 magpie group [list]"
+    fi
     if [[ "${a[1]:-}" == "probe" ]]; then
       [[ "${#a[@]}" -ge 3 && "${#a[@]}" -le 5 ]] || deny "magpie probe 需 1 个模型名，可选 --max-tokens=N / --thinking=N"
       [[ "${a[2]}" =~ ^[^[:space:]]{1,128}$ ]] || deny "非法模型名"
