@@ -149,7 +149,8 @@ case "$sub" in
         case "${a[$i]}" in
           --max-tokens=[0-9]*) pargs+=("${a[$i]}") ;;
           --thinking=[0-9]*)   pargs+=("${a[$i]}") ;;
-          *)                   deny "magpie probe 仅支持 --max-tokens=N / --thinking=N" ;;
+          --web-search)        pargs+=(--web-search) ;;
+          *)                   deny "magpie probe 仅支持 --max-tokens=N / --thinking=N / --web-search" ;;
         esac
         i=$((i + 1))
       done
