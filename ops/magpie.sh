@@ -121,6 +121,19 @@ case "$group" in
       || die "查询 MCP 列表失败"
     echo
     ;;
+  mcp-tools)
+    # 只读：对给定 MCP 路径做 tools/list，确认是否聚合了所有工具
+    mpath="${1:-/mcp}"
+    [[ "$mpath" =~ ^/mcp(/[A-Za-z0-9/_-]{0,64})?$ ]] || die "非法 MCP 路径：$mpath"
+    key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
+    [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
+    curl -s -m 25 -X POST "http://127.0.0.1:3425${mpath}" \
+      -H "Authorization: Bearer ${key}" \
+      -H 'Content-Type: application/json' \
+      -H 'Accept: application/json, text/event-stream' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | head -c 4000
+    echo
+    ;;
   plugin)
     sub="${1:-}"
     case "$sub" in
