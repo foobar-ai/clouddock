@@ -1,5 +1,8 @@
 # new-api 服务编排：端口仅绑定 127.0.0.1，不暴露公网
 # 由 bootstrap/steps/05-services.sh 聚合启动，环境变量读取 deploy/.env
+# 显式 project 名：避免增删 compose 文件时 project 名漂移导致容器名冲突
+name: clouddock
+
 services:
   new-api:
     image: calciumion/new-api:latest

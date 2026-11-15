@@ -18,7 +18,8 @@ usage() {
   start <svc>             启动已停止的服务
   stop <svc>              停止指定服务
   restart <svc|all>       重启指定服务（进程重启，不重读 .env）
-  pull <svc>              拉取并重建指定服务镜像
+  pull <svc>              拉取并重建指定服务镜像（有 build 的服务走 build --pull）
+  recreate <svc>          删除容器并按当前 compose 重建（project/容器漂移时用）
   logs <svc> [--tail=N]   查看服务日志（默认 200 行）
   claude [show]           查看 VPS 上 agent 的 Claude Code 配置（模型矩阵/网关，密钥打码）
   claude apply [--model <m>]  按仓库模板 claude/settings.template.json 渲染 settings.json
@@ -64,6 +65,7 @@ case "$cmd" in
   start)    bash "$SCRIPT_DIR/ops/service.sh" start "$@" ;;
   stop)     bash "$SCRIPT_DIR/ops/service.sh" stop "$@" ;;
   pull)     bash "$SCRIPT_DIR/ops/service.sh" pull "$@" ;;
+  recreate) bash "$SCRIPT_DIR/ops/service.sh" recreate "$@" ;;
   env)      bash "$SCRIPT_DIR/ops/env.sh" "$@" ;;
   reload)   bash "$SCRIPT_DIR/ops/reload.sh" "$@" ;;
   magpie)   bash "$SCRIPT_DIR/ops/magpie.sh" "$@" ;;

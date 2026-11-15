@@ -10,7 +10,7 @@ require_root
 
 action="${1:-}"
 svc="${2:-}"
-[[ -n "$action" ]] || die "用法: clouddock <up|start|stop|pull> <服务名>"
+[[ -n "$action" ]] || die "用法: clouddock <up|start|stop|pull|recreate> <服务名>"
 require_svc "$svc"
 
 compose_files
@@ -27,6 +27,12 @@ case "$action" in
   stop)
     log "停止服务 $svc ..."
     docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" stop "$svc"
+    ;;
+  recreate)
+    # 删除容器后按当前 compose 重建（用于 project 名变更、容器漂移等场景；数据在卷/挂载上不丢）
+    log "移除容器 $svc 并按当前 compose 重建 ..."
+    docker rm -f "$svc" >/dev/null 2>&1 || true
+    compose_up_svc "$svc"
     ;;
   pull)
     if [[ "$(svc_has_build "$svc")" == "yes" ]]; then
