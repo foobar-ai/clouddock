@@ -121,8 +121,14 @@ case "$sub" in
     ;;
   magpie)
     if [[ "${a[1]:-}" == "plugin" ]]; then
-      [[ "${a[2]:-}" == "list" && "${#a[@]}" -eq 3 ]] || deny "仅支持 magpie plugin list"
-      exec "$CLOUDDOCK" magpie plugin list
+      if [[ "${a[2]:-}" == "list" && "${#a[@]}" -eq 3 ]]; then
+        exec "$CLOUDDOCK" magpie plugin list
+      fi
+      if [[ "${a[2]:-}" == "options" && "${#a[@]}" -eq 4 ]]; then
+        [[ "${a[3]}" =~ ^[a-z0-9-]{1,32}$ ]] || deny "非法插件名：${a[3]}"
+        exec "$CLOUDDOCK" magpie plugin options "${a[3]}"
+      fi
+      deny "仅支持 magpie plugin list | plugin options <name>"
     fi
     if [[ "${a[1]:-}" == "probe" ]]; then
       [[ "${#a[@]}" -eq 3 ]] || deny "magpie probe 需且仅需 1 个模型名"

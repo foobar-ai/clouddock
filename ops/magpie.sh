@@ -85,7 +85,12 @@ case "$group" in
     sub="${1:-}"
     case "$sub" in
       list) docker exec magpie magpie plugin list ;;
-      *)    usage ;;
+      options)
+        name="${2:-}"
+        [[ "$name" =~ ^[a-z0-9-]{1,32}$ ]] || die "用法: clouddock magpie plugin options <name>（只读，不传 JSON）"
+        docker exec magpie magpie plugin options "$name"
+        ;;
+      *) usage ;;
     esac
     ;;
   probe) probe_model "${1:-}" ;;
