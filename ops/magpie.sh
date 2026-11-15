@@ -129,10 +129,30 @@ case "$group" in
     # 只读：Library 概况（哪些 agent 走 MCP router、哪些保留独立条目）
     docker exec magpie magpie library
     ;;
+  mcp-call)
+    # 只读诊断：调用一次 MCP 工具（仅支持带 query 参数的搜索类工具），并计时
+    mpath="${1:-}"; mtool="${2:-}"; mquery="${3:-}"
+    [[ "$mpath" =~ ^/mcp/magpie/[a-z][a-z0-9-]{0,31}$ ]] || die "非法 MCP 路径：$mpath"
+    [[ "$mtool" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || die "非法工具名：$mtool"
+    [[ "$mquery" =~ ^[A-Za-z0-9._-]{1,200}$ ]] || die "非法查询词（只允许字母数字 . _ -，不含空格）"
+    key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
+    [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
+    body="$(python3 -c 'import json,sys
+print(json.dumps({"jsonrpc":"2.0","id":1,"method":"tools/call",
+                  "params":{"name":sys.argv[1],"arguments":{"query":sys.argv[2]}}}))' "$mtool" "$mquery")"
+    start_ms="$(date +%s%3N)"
+    curl -s -m 180 -X POST "http://127.0.0.1:3425${mpath}" \
+      -H "Authorization: Bearer ${key}" \
+      -H 'Content-Type: application/json' \
+      -H 'Accept: application/json, text/event-stream' \
+      -d "$body" | head -c 2500
+    echo
+    log "elapsed_ms=$(( $(date +%s%3N) - start_ms ))"
+    ;;
   mcp-tools)
     # 只读：对给定 MCP 路径做 tools/list，确认是否聚合了所有工具
     mpath="${1:-/mcp}"
-    [[ "$mpath" =~ ^/mcp(/[A-Za-z0-9/_-]{0,64})?$ ]] || die "非法 MCP 路径：$mpath"
+    [[ "$mpath" =~ ^/mcp(/[A-Za-z0-9-]{1,32}){0,3}$ ]] || die "非法 MCP 路径：$mpath"
     key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
     [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
     curl -s -m 25 -X POST "http://127.0.0.1:3425${mpath}" \
