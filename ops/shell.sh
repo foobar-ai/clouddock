@@ -167,7 +167,8 @@ case "$sub" in
           case "${a[$i]}" in
             --errors)    args+=(--errors) ;;
             --limit=[0-9]*) args+=("${a[$i]}") ;;
-            *)           deny "agent sessions 仅支持 [--errors] [--limit=N]" ;;
+            --grep=[A-Za-z0-9/_.:-]*) args+=("${a[$i]}") ;;
+            *)           deny "agent sessions 仅支持 [--errors] [--limit=N] [--grep=xxx]" ;;
           esac
           i=$((i + 1))
         done

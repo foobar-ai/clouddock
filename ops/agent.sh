@@ -154,24 +154,26 @@ agent_git_setup() {
 
 # ---------- session 日志排查 ----------
 agent_sessions() {
-  local errors_only=0 limit=3
+  local errors_only=0 limit=3 grep_pat=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --errors) errors_only=1; shift ;;
       --limit=*) limit="${1#--limit=}"; shift ;;
+      --grep=*)  grep_pat="${1#--grep=}"; shift ;;
       *) die "未知参数：$1" ;;
     esac
   done
   [[ "$limit" =~ ^[0-9]{1,2}$ ]] || die "非法 --limit（1-99）"
+  [[ -z "$grep_pat" || "$grep_pat" =~ ^[A-Za-z0-9/_.:-]{1,64}$ ]] || die "非法 --grep（仅字母数字及 / _ . : -）"
 
-  python3 - "$AGENT_HOME" "$errors_only" "$limit" <<'PY'
+  python3 - "$AGENT_HOME" "$errors_only" "$limit" "$grep_pat" <<'PY'
 import glob, json, os, re, sys
 
-home, errors_only, limit = sys.argv[1], sys.argv[2] == "1", int(sys.argv[3])
+home, errors_only, limit, grep_pat = sys.argv[1], sys.argv[2] == "1", int(sys.argv[3]), sys.argv[4]
 files = sorted(glob.glob(os.path.join(home, ".claude/projects/*/*.jsonl")),
                key=os.path.getmtime, reverse=True)[:limit]
 
-ERR_RE = re.compile(r"API Error|unknown model|not_found|invalid_request|\b(400|401|403|404|429|500|502|503)\b")
+ERR_RE = re.compile(r"API Error|unknown model|model_not_found|not_found_error|invalid_request_error")
 
 
 def text_of(rec):
@@ -211,6 +213,8 @@ for path in files:
             txt = text_of(rec)
             is_err = bool(rec.get("isApiErrorMessage")) or bool(ERR_RE.search(txt or ""))
             if errors_only and not is_err:
+                continue
+            if grep_pat and grep_pat not in txt:
                 continue
             out.append({
                 "file": os.path.basename(path),
