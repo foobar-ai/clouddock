@@ -113,6 +113,14 @@ case "$group" in
           docker exec magpie magpie group "$sub" ;;
     esac
     ;;
+  mcp)
+    # 只读：列出当前网关密钥可用的 MCP 服务器与工具（/v1/magpie/mcp）
+    key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
+    [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
+    curl -s -m 15 -H "Authorization: Bearer ${key}" http://127.0.0.1:3425/v1/magpie/mcp \
+      || die "查询 MCP 列表失败"
+    echo
+    ;;
   plugin)
     sub="${1:-}"
     case "$sub" in

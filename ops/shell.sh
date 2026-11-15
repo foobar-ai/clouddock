@@ -130,6 +130,9 @@ case "$sub" in
       fi
       deny "仅支持 magpie plugin list | plugin options <name>"
     fi
+    if [[ "${a[1]:-}" == "mcp" && "${#a[@]}" -eq 2 ]]; then
+      exec "$CLOUDDOCK" magpie mcp
+    fi
     if [[ "${a[1]:-}" == "group" ]]; then
       if [[ "${#a[@]}" -eq 2 ]]; then
         exec "$CLOUDDOCK" magpie group
