@@ -25,14 +25,36 @@ UNIT="/etc/systemd/system/magpie.service"
 
 gateway_ok() {
   [[ -x "$BIN" ]] || return 1
+  # 命令型 MCP server（uvx/npx）依赖宿主运行时，缺任一项都视为未就绪
+  command -v node >/dev/null 2>&1 || return 1
+  command -v uvx >/dev/null 2>&1 || return 1
   systemctl is-active --quiet magpie || return 1
   curl -s -o /dev/null -m 5 http://127.0.0.1:3425/v1/models 2>/dev/null
+}
+
+# 原生 magpie 跑在宿主上，Library 里 npx/uvx 型 MCP server 用宿主运行时
+ensure_runtimes() {
+  command -v node >/dev/null 2>&1 \
+    || die "宿主缺 node（scripts/install-claude-vps.sh 会装 Node 24；或用 apt 装 nodejs）"
+  if command -v uvx >/dev/null 2>&1; then
+    ok "uv/uvx 已就绪（$(uv --version 2>/dev/null | head -n1)）"
+    return 0
+  fi
+  log "安装 uv（PyPI 官方包，提供 uv/uvx）..."
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get install -y --no-install-recommends python3-pip >/dev/null
+  pip3 install --no-cache-dir --break-system-packages uv >/dev/null
+  command -v uvx >/dev/null 2>&1 || die "uv 安装后仍未找到 uvx"
+  ok "uv/uvx 安装完成（$(uv --version 2>/dev/null | head -n1)）"
 }
 
 native_run() {
   local key pub
   key="$(env_get MAGPIE_WEB_KEY 2>/dev/null || true)"
   pub="$(env_get MAGPIE_PUBLIC_URL 2>/dev/null || true)"
+
+  # 0) 宿主运行时（npx / uvx 型 MCP server 依赖）
+  ensure_runtimes
 
   # 1) 先备份并下线旧容器（释放 3425/3430，且避免迁移时的并发写）
   if docker ps -a --format '{{.Names}}' | grep -qx magpie; then
