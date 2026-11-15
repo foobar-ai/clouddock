@@ -45,6 +45,10 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `magpie gwkey add <name>` | 新增网关密钥（key 只打印一次） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
 | `magpie plugin list` | magpie 插件状态 | 只读；模型重定向插件（model-map）是否生效看这里 |
+| `magpie runtime` / `files` / `native-status` | 原生形态诊断 | 宿主运行时、配置目录、systemd、端口 |
+| `magpie search` / `library` | 搜索源 / Library | 命令型 MCP 依赖宿主 node/uvx |
+| `magpie router [on\|off]` | MCP router | on 时把 Library 聚合成 `magpie` 条目写入 agent 配置（自动备份） |
+| `recreate <svc>` | 容器漂移重建 | 删容器后按当前 compose 重建 |
 | `magpie plugin options <name>` | 读插件配置 | 只读；如 `plugin options model-map` 看映射表 |
 | `magpie probe <model>` | 网关只读探针 | 真发一次 `max_tokens=8` 请求，回 HTTP 码 + 响应摘要 + 网关日志里的实际模型名 |
 | `tools ensure <tool>` | 受控装工具 | apt 官方源；白名单目前仅 `tmux` |

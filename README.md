@@ -256,9 +256,10 @@ clouddock/
 │       ├── 02-openresty.sh
 │       ├── 03-acme.sh
 │       ├── 04-cert.sh
-│       ├── 05-services.sh         #   聚合启动所有服务
+│       ├── 04b-magpie-native.sh   #   magpie 原生安装（终端版）+ 数据迁移 + systemd
+│       ├── 05-services.sh         #   聚合启动 compose 服务（new-api）
 │       ├── 06-openresty-site.sh
-│       └── 07-agent-tools.sh      #   agent 项目启动器（有 agent 用户时安装）
+│       └── 07-agent-tools.sh      #   agent 项目启动器 + git 凭证助手
 ├── ops/                           # 运维脚本（clouddock 子命令实现）
 │   ├── lib.sh                     #   运维公共库（JSON/脱敏）
 │   ├── shell.sh                   #   SSH 白名单受限入口
@@ -268,17 +269,15 @@ clouddock/
 │   ├── claude.sh                  #   Claude Code 配置（模板渲染/改模型/自检）
 │   ├── tools.sh                   #   受控安装工具（白名单：tmux）
 │   └── cron-install.sh            #   定时巡检安装
-├── services/                      # 服务定义（每服务一目录，可扩展）
+├── services/                      # compose 服务定义（magpie 已改为原生，不在此处）
 │   ├── new-api/
-│   │   ├── compose.yml            #   new-api 编排（Supabase + Upstash）
+│   │   ├── compose.yml            #   new-api 编排（project 固定为 clouddock）
 │   │   └── deploy.sh              #   就绪检查
-│   └── magpie/
-│       ├── compose.yml            #   magpie 编排
-│       └── deploy.sh              #   就绪检查 + gateway key
-├── deploy/                        # 配置
+│   └── magpie/                    #   已清空（保留目录占位，部署见 bootstrap/04b）
+├── deploy/                        # 配置（.env / magpie.env 均被 gitignore）
 │   └── .env.example               #   环境变量模板
-├── claude/                        # Claude Code 配置模板
-│   └── settings.template.json     #   agent 的 ~/.claude/settings.json 单一真源
+├── claude/                        # Claude Code 首次初始化模板
+│   └── settings.template.json     #   仅首次 apply 使用；之后真源归 magpie
 ├── openresty/                     # 反代配置
 │   ├── nginx.conf                 #   OpenResty 主配置
 │   └── sites/                     #   站点配置
@@ -296,6 +295,27 @@ clouddock/
     ├── add-service.md             # 新增服务指南
     └── ai-ops.md                  # AI 运维指南
 ```
+
+## magpie 部署形态（原生 + systemd）
+
+magpie 不再用容器承载。官方 Docker 镜像是 **gateway-only**：容器里没有可编排的 agent，Library 的 MCP server 无法下发给宿主 agent，命令型 MCP 还依赖容器内运行时（上游 issue #5776 / #1540 仍未解决）。因此改为 Linux 终端版原生安装：
+
+| 项 | 值 |
+| --- | --- |
+| 二进制 | `/home/agent/.local/bin/magpie`（官方安装脚本 `sh -s -- --tui`） |
+| 服务 | `systemctl status|restart magpie`（系统级 unit，`User=agent`：才能看见并写 `/home/agent` 下的 agent 配置） |
+| 端口 | `127.0.0.1:3425` 网关 + `127.0.0.1:3430` UI（仅回环，经 SSH 隧道访问） |
+| 配置 | `/home/agent/.config/magpie`（providers / gateway keys / library / 用量），首次从旧容器卷 `/opt/clouddock-data/magpie/magpie` 迁移 |
+| 密钥 | Web UI 密钥在 `deploy/magpie.env`（600，被 gitignore），由 systemd `EnvironmentFile` 读取 |
+| 运行时 | 命令型 MCP 用宿主 `node` / `npx` / `uv` / `uvx`（04b 阶段自动补装 uv） |
+
+要点：
+
+- **配置真源**：`claude/settings.template.json` 只做**首次初始化**；之后模型与 MCP 归 magpie 管理。`clouddock claude apply` 遇到已存在的配置会拒绝，确需重置加 `--force`。
+- **MCP 聚合**：`clouddock magpie router on` 会把 Library 的 server 聚合成一个 `magpie` 条目写入 agent 配置（工具名 `server__tool`），端点 `/mcp/magpie/hub/<agent>`；写入前自动备份到 `~agent/.config/magpie/backups/`。
+- **升级**：`clouddock upgrade` → 04b 阶段幂等重放（已装则跳过安装与迁移，只做就绪检查）。
+- **compose 只管 new-api**：`project` 名固定为 `clouddock`（避免增删 compose 文件导致容器名冲突）；容器漂移时用 `clouddock recreate <svc>`。
+- **回滚到容器版**：`git revert` 04b 相关提交并恢复 `services/magpie/`，先 `systemctl disable --now magpie` 再 `docker compose up -d`；旧配置备份在 `/opt/clouddock-data/magpie-backup-*`。
 
 ## 成本与流量管控
 
