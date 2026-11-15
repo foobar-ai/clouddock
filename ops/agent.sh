@@ -406,7 +406,7 @@ case "$cmd" in
   clone)      agent_clone "${1:-}" ;;
   sessions)   agent_sessions "$@" ;;
   happy)      agent_happy "$@" ;;
-  mcp)        shift || true; agent_mcp "$@" ;;
+  mcp)        agent_mcp "$@" ;;
   gh-token)
     [[ "${1:-}" == "set" ]] || usage
     shift || true
