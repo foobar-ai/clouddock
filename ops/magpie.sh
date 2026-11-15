@@ -10,8 +10,44 @@ source "$SCRIPT_DIR/lib.sh"
 require_root
 
 usage() {
-  echo "用法: clouddock magpie gwkey list|add <name>|remove <name|id> | plugin list" >&2
+  echo "用法: clouddock magpie gwkey list|add <name>|remove <name|id> | plugin list | probe <model>" >&2
   exit 2
+}
+
+# 只读探针：向本机网关发一次最小请求（max_tokens=8），回显 HTTP 码 + 响应摘要 + 网关日志里的实际路由目标。
+# 用于验证模型重定向（model-map 中间件）是否生效，不修改任何配置。
+probe_model() {
+  local model="${1:-}" key body resp code payload logs
+  [[ "$model" =~ ^[^[:space:]]{1,128}$ ]] || die "用法: clouddock magpie probe <model>"
+  key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
+  [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
+
+  body="$(python3 - "$model" <<'PY'
+import json, sys
+print(json.dumps({"model": sys.argv[1], "max_tokens": 8,
+                  "messages": [{"role": "user", "content": "ping"}]}))
+PY
+)"
+
+  resp="$(curl -s -m 90 -w '\n%{http_code}' http://127.0.0.1:3425/v1/messages \
+    -H "x-api-key: ${key}" -H 'anthropic-version: 2023-06-01' \
+    -H 'content-type: application/json' -d "$body" 2>&1 || true)"
+  code="${resp##*$'\n'}"
+  payload="${resp%$'\n'*}"
+  logs="$(docker logs --tail=60 magpie 2>&1 | grep -E "call to .* failed|call to " | tail -n3 || true)"
+
+  printf '%s' "$payload" | redact | python3 - "$model" "$code" "$logs" <<'PY'
+import json, sys
+model, code, logs = sys.argv[1], sys.argv[2], sys.argv[3]
+payload = sys.stdin.read()
+print(json.dumps({
+    "requested_model": model,
+    "http_status": code,
+    "ok": code.startswith("2"),
+    "response_head": payload[:400],
+    "gateway_log": [l for l in logs.splitlines() if l.strip()],
+}, ensure_ascii=False, indent=2))
+PY
 }
 
 group="${1:-}"
@@ -51,6 +87,7 @@ case "$group" in
       *)    usage ;;
     esac
     ;;
+  probe) probe_model "${1:-}" ;;
   *)
     usage
     ;;

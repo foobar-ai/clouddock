@@ -124,7 +124,12 @@ case "$sub" in
       [[ "${a[2]:-}" == "list" && "${#a[@]}" -eq 3 ]] || deny "仅支持 magpie plugin list"
       exec "$CLOUDDOCK" magpie plugin list
     fi
-    [[ "${a[1]:-}" == "gwkey" ]] || deny "仅支持 magpie gwkey / plugin list"
+    if [[ "${a[1]:-}" == "probe" ]]; then
+      [[ "${#a[@]}" -eq 3 ]] || deny "magpie probe 需且仅需 1 个模型名"
+      [[ "${a[2]}" =~ ^[^[:space:]]{1,128}$ ]] || deny "非法模型名"
+      exec "$CLOUDDOCK" magpie probe "${a[2]}"
+    fi
+    [[ "${a[1]:-}" == "gwkey" ]] || deny "仅支持 magpie gwkey / plugin list / probe"
     case "${a[2]:-}" in
       list)
         [[ "${#a[@]}" -eq 3 ]] || deny "gwkey list 不接受参数"
