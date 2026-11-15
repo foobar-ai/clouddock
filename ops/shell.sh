@@ -256,6 +256,8 @@ case "$sub" in
         case "${a[2]:-}" in
           list)    [[ "${#a[@]}" -eq 3 ]] || deny "agent mcp list 不接受参数"
                    exec "$CLOUDDOCK" agent mcp list ;;
+          get)     [[ "${#a[@]}" -eq 3 ]] || deny "agent mcp get 不接受参数"
+                   exec "$CLOUDDOCK" agent mcp get ;;
           add-hub) [[ "${#a[@]}" -eq 3 ]] || deny "agent mcp add-hub 不接受参数"
                    exec "$CLOUDDOCK" agent mcp add-hub ;;
           remove)  [[ "${#a[@]}" -eq 3 ]] || deny "agent mcp remove 不接受参数"

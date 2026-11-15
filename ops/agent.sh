@@ -345,6 +345,9 @@ agent_mcp() {
     list)
       su - "$AGENT_USER" -c 'claude mcp list'
       ;;
+    get)
+      su - "$AGENT_USER" -c 'claude mcp get magpie'
+      ;;
     add-hub)
       key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
       [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
