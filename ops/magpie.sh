@@ -121,6 +121,14 @@ case "$group" in
       || die "查询 MCP 列表失败"
     echo
     ;;
+  search)
+    # 只读：列出已配置的搜索来源（provider 搜索 / Search API）及顺序
+    docker exec magpie magpie search
+    ;;
+  library)
+    # 只读：Library 概况（哪些 agent 走 MCP router、哪些保留独立条目）
+    docker exec magpie magpie library
+    ;;
   mcp-tools)
     # 只读：对给定 MCP 路径做 tools/list，确认是否聚合了所有工具
     mpath="${1:-/mcp}"
