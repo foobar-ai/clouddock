@@ -150,17 +150,28 @@ print(json.dumps({"jsonrpc":"2.0","id":1,"method":"tools/call",
     log "elapsed_ms=$(( $(date +%s%3N) - start_ms ))"
     ;;
   mcp-tools)
-    # 只读：对给定 MCP 路径做 tools/list，确认是否聚合了所有工具
+    # 只读：按 MCP 协议先 initialize 拿 session，再 tools/list（hub 是有状态的）
     mpath="${1:-/mcp}"
     [[ "$mpath" =~ ^/mcp(/[A-Za-z0-9-]{1,32}){0,3}$ ]] || die "非法 MCP 路径：$mpath"
     key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
     [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
-    curl -s -m 25 -X POST "http://127.0.0.1:3425${mpath}" \
+    url="http://127.0.0.1:3425${mpath}"
+
+    init_resp="$(curl -s -D - -m 25 -X POST "$url" \
       -H "Authorization: Bearer ${key}" \
       -H 'Content-Type: application/json' \
       -H 'Accept: application/json, text/event-stream' \
-      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | head -c 4000
+      -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"clouddock","version":"0"}}}' || true)"
+    sid="$(printf '%s' "$init_resp" | tr -d '\r' | grep -i '^mcp-session-id:' | awk '{print $2}' | head -n1)"
+
+    curl -s -m 25 -X POST "$url" \
+      -H "Authorization: Bearer ${key}" \
+      ${sid:+-H "Mcp-Session-Id: ${sid}"} \
+      -H 'Content-Type: application/json' \
+      -H 'Accept: application/json, text/event-stream' \
+      -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | head -c 4000
     echo
+    [[ -n "$sid" ]] && log "session=$sid" || warn "未拿到 Mcp-Session-Id（该端点可能无状态或不支持 initialize）"
     ;;
   plugin)
     sub="${1:-}"
