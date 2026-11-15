@@ -83,3 +83,12 @@ compose_up_svc() {
   local svc="$1"
   docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" up -d "$svc"
 }
+
+# 服务是否由本地 Dockerfile 构建（有 build 段）；用于 pull 走 build 而非 registry 拉取
+svc_has_build() {
+  local svc="$1"
+  docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" config --format json 2>/dev/null \
+    | python3 -c 'import json,sys
+d = json.load(sys.stdin)
+print("yes" if (d.get("services", {}).get(sys.argv[1]) or {}).get("build") else "no")' "$svc" 2>/dev/null
+}

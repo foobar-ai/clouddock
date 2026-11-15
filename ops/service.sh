@@ -29,8 +29,13 @@ case "$action" in
     docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" stop "$svc"
     ;;
   pull)
-    log "拉取服务 $svc 镜像 ..."
-    docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" pull "$svc"
+    if [[ "$(svc_has_build "$svc")" == "yes" ]]; then
+      log "服务 $svc 为本地构建，拉取基础镜像并重建 ..."
+      docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" build --pull "$svc"
+    else
+      log "拉取服务 $svc 镜像 ..."
+      docker compose --env-file "$ENV_FILE" "${COMPOSE_FILES[@]}" pull "$svc"
+    fi
     log "重建服务 $svc ..."
     compose_up_svc "$svc"
     ;;
