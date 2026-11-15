@@ -216,12 +216,16 @@ for path in files:
                 continue
             if grep_pat and grep_pat not in txt:
                 continue
+            usage = (rec.get("message") or {}).get("usage") or {}
             out.append({
                 "file": os.path.basename(path),
                 "ts": rec.get("timestamp", ""),
                 "type": rec.get("type", ""),
                 "error": is_err,
                 "model": ((rec.get("message") or {}).get("model") or ""),
+                "usage": {k: usage.get(k) for k in
+                          ("input_tokens", "cache_read_input_tokens", "output_tokens")
+                          if usage.get(k) is not None} or None,
                 "text": (txt[:300] + "…") if len(txt) > 300 else txt,
             })
 
