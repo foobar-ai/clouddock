@@ -185,3 +185,50 @@ bash scripts/clouddock-ops-ssh.sh agent happy --file=<日志名> --tail=200 --gr
 | 探一次真实请求（验证映射） | `clouddock magpie probe <model>` |
 | Claude Code 会话报错 | `clouddock agent sessions --errors` |
 | Happy 日志/配置 | `clouddock agent happy --tail=200 [--file=xxx] [--grep=xxx]` |
+
+## 上游跟踪（Happy 的模型清单能力）
+
+> 检索方式：GitHub Search API `repo:slopus/happy`，关键词 `model in:title`（81 条命中，逐条读到 21 条）与 `"custom model"`（10 条全读）。数据快照 2026-11-15；剩余条目未逐条读，结论以已读条目为限。
+
+### 为什么 Happy 不用 `sonnet/opus/haiku` 这类通用别名
+
+不是没考虑，而是试过并翻车：
+
+| 编号 | 要点 | 状态 |
+| --- | --- | --- |
+| #1565 | picker 的 key **原样**传给 `claude --model`，不校验合法性；`opus-5` 不是合法别名 → 启动报 "selected model (opus-5) … may not exist"。作者实测 Claude Code 2.1.199 的合法别名表仅：`default, fable, haiku, opus, opus-4-8, opusplan, sonnet, sonnet-5`。建议短期改用完整模型 ID，长期对已安装 CLI 的别名表做校验 | open |
+| #1498 | 同类故障：picker 发 `fable` → 启动报模型不存在 | open |
+
+结论：别名是**版本相关的脆弱契约**（语义随 CLI 版本变化），Happy 每新增一个模型就要"猜一个别名"。
+
+### Happy 当前的实际行为（踩坑机制）
+
+| 行为 | 来源 |
+| --- | --- |
+| 无网关时回退到 4 个硬编码别名 `default / opus / sonnet / haiku` | #1347 |
+| CLI 侧 `DEFAULT_CLAUDE_MODEL = 'opus'`，无 `--model` 时也会强制下发，**覆盖 `~/.claude/settings.json`** | #1721（已关闭） |
+| App 的 Claude 模型列表硬编码 3 个 key、无 `[1m]` 变体；"Custom model…" 入口**只对 codex 开放** | #1721 |
+| 移动端 thinking level 显示 `max/ultra`，实际被截断为 `xhigh` | #1855 |
+
+### 社区想改成的方向（均未合并）
+
+| 编号 | 内容 | 状态 |
+| --- | --- | --- |
+| #1347（PR） | 从 `ANTHROPIC_BASE_URL` 的 `/v1/models` 拉完整模型目录，别名只作 fallback（作者称测过 135+ 模型的网关，含 1M 变体） | open |
+| #1459（Issue） | 动态拉取网关模型列表 | open |
+| #1773（Issue） | 目前只能加**一个**自定义模型，希望支持多个 | open |
+| #1926（Issue） | 协调跟踪：不要依赖硬编码 app 列表，收敛重复实现 | open |
+| #1844（PR） | 用 Agent SDK `supportedModels()` 做运行时发现 | open |
+| #1512（PR） | agent 编辑器里配置默认模型（Opus/Sonnet/Haiku）+ effort level | open |
+| #1855（Issue） | 支持自定义 thinking level，并要求更频繁更新模型列表 | open |
+
+### 对我们的处置
+
+1. **别等上游**：三条实现路线（网关 `/v1/models`、SDK `supportedModels()`、`agy models`）互相竞争（#1926 已明确担忧"又一个竞争实现"），短期不会合并；
+2. **网关兜底（方案 A-1）是当前唯一不依赖上游节奏的解法**，继续沿用；
+3. **何时可以撤掉兜底**：当 Happy 合并 #1347 或 #1459、且手机端能列出并选中 `group/free[1m]` 时，先观察一段时间再撤；
+4. **想加速**：到 #1347 / #1459 / #1773 / #1855 评论补充真实场景（第三方网关 + `group/<id>` 命名 + `[1m]` 变体），这正是它们缺失的案例。
+
+### 与 Paseo 的差异
+
+Paseo 走另一条路：读取 harness 侧的 `model` 与 `ANTHROPIC_DEFAULT_*`，并允许用 `models` 整体替换清单——把"清单可控"交给配置，不依赖上游 PR。详见上文 B-1。
