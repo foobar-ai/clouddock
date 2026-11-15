@@ -123,7 +123,7 @@ case "$group" in
       *) usage ;;
     esac
     ;;
-  probe) shift || true; probe_model "$@" ;;
+  probe) probe_model "$@" ;;
   *)
     usage
     ;;
