@@ -129,6 +129,10 @@ case "$group" in
     # 只读：Library 概况（哪些 agent 走 MCP router、哪些保留独立条目）
     docker exec magpie magpie library
     ;;
+  router)
+    # 只读：MCP router 开关状态
+    docker exec magpie magpie library mcp router || true
+    ;;
   mcp-call)
     # 只读诊断：调用一次 MCP 工具（仅支持带 query 参数的搜索类工具），并计时
     mpath="${1:-}"; mtool="${2:-}"; mquery="${3:-}"
@@ -163,6 +167,16 @@ print(json.dumps({"jsonrpc":"2.0","id":1,"method":"tools/call",
       -H 'Accept: application/json, text/event-stream' \
       -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"clouddock","version":"0"}}}' || true)"
     sid="$(printf '%s' "$init_resp" | tr -d '\r' | grep -i '^mcp-session-id:' | awk '{print $2}' | head -n1)"
+
+    # 按 MCP 规范补发 initialized 通知，否则部分实现不提供工具
+    if [[ -n "$sid" ]]; then
+      curl -s -m 10 -o /dev/null -X POST "$url" \
+        -H "Authorization: Bearer ${key}" \
+        -H "Mcp-Session-Id: ${sid}" \
+        -H 'Content-Type: application/json' \
+        -H 'Accept: application/json, text/event-stream' \
+        -d '{"jsonrpc":"2.0","method":"notifications/initialized"}' || true
+    fi
 
     curl -s -m 25 -X POST "$url" \
       -H "Authorization: Bearer ${key}" \

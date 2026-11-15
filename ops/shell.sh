@@ -145,6 +145,9 @@ case "$sub" in
     if [[ "${a[1]:-}" == "library" && "${#a[@]}" -eq 2 ]]; then
       exec "$CLOUDDOCK" magpie library
     fi
+    if [[ "${a[1]:-}" == "router" && "${#a[@]}" -eq 2 ]]; then
+      exec "$CLOUDDOCK" magpie router
+    fi
     if [[ "${a[1]:-}" == "mcp-tools" && "${#a[@]}" -eq 3 ]]; then
       [[ "${a[2]}" =~ ^/mcp(/[A-Za-z0-9/_-]{0,64})?$ ]] || deny "非法 MCP 路径"
       exec "$CLOUDDOCK" magpie mcp-tools "${a[2]}"
