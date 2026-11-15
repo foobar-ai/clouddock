@@ -139,6 +139,12 @@ case "$sub" in
     if [[ "${a[1]:-}" == "runtime" && "${#a[@]}" -eq 2 ]]; then
       exec "$CLOUDDOCK" magpie runtime
     fi
+    if [[ "${a[1]:-}" == "files" && "${#a[@]}" -eq 2 ]]; then
+      exec "$CLOUDDOCK" magpie files
+    fi
+    if [[ "${a[1]:-}" == "native-status" && "${#a[@]}" -eq 2 ]]; then
+      exec "$CLOUDDOCK" magpie native-status
+    fi
     if [[ "${a[1]:-}" == "mcp-call" && "${#a[@]}" -eq 5 ]]; then
       [[ "${a[2]}" =~ ^/mcp/magpie/[a-z][a-z0-9-]{0,31}$ ]] || deny "非法 MCP 路径"
       [[ "${a[3]}" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || deny "非法工具名"

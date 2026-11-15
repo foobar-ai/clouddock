@@ -121,6 +121,22 @@ case "$group" in
       || die "查询 MCP 列表失败"
     echo
     ;;
+  files)
+    # 只读：容器 /config 卷的结构（迁移到原生前要知道拷哪些）
+    docker exec magpie sh -c 'find /config -mindepth 1 -maxdepth 2 | sort | head -60'
+    ;;
+  native-status)
+    # 只读：宿主是否已有原生 magpie、agent 是否有 linger、3425/3430 谁在监听
+    echo "--- 宿主 magpie"
+    command -v magpie || echo "(PATH 中无 magpie)"
+    ls -l /home/agent/.local/bin/magpie 2>/dev/null || echo "(agent 用户下无 magpie)"
+    echo "--- linger"
+    loginctl show-user agent -p Linger 2>/dev/null || echo "(无法查询 linger)"
+    echo "--- agent systemd user units"
+    ls /home/agent/.config/systemd/user 2>/dev/null | head -20 || echo "(无)"
+    echo "--- 端口"
+    ss -lntp 2>/dev/null | grep -E ':(3425|3430)\b' || echo "(3425/3430 未监听)"
+    ;;
   runtime)
     # 只读：确认 magpie 容器内可用的运行时（决定命令型 MCP server 能否启动）
     docker exec magpie sh -c '
