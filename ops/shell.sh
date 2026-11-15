@@ -185,7 +185,8 @@ case "$sub" in
           case "${a[$i]}" in
             --tail=[0-9]*) args+=("${a[$i]}") ;;
             --grep=[A-Za-z0-9/_.:-]*) args+=("${a[$i]}") ;;
-            *) deny "agent happy 仅支持 [--tail=N] [--grep=xxx]" ;;
+            --file=[A-Za-z0-9._-]*) args+=("${a[$i]}") ;;
+            *) deny "agent happy 仅支持 [--tail=N] [--grep=xxx] [--file=name]" ;;
           esac
           i=$((i + 1))
         done

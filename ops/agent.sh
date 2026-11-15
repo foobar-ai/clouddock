@@ -232,21 +232,23 @@ PY
 
 # ---------- happy 日志排查 ----------
 agent_happy() {
-  local tail_n=0 grep_pat=""
+  local tail_n=0 grep_pat="" file_name=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --tail=*) tail_n="${1#--tail=}"; shift ;;
       --grep=*) grep_pat="${1#--grep=}"; shift ;;
+      --file=*) file_name="${1#--file=}"; shift ;;
       *) die "未知参数：$1" ;;
     esac
   done
   [[ "$tail_n" =~ ^[0-9]{1,5}$ ]] || die "非法 --tail（0-99999）"
   [[ -z "$grep_pat" || "$grep_pat" =~ ^[A-Za-z0-9/_.:-]{1,64}$ ]] || die "非法 --grep（仅字母数字及 / _ . : -）"
+  [[ -z "$file_name" || "$file_name" =~ ^[A-Za-z0-9._-]{1,80}$ ]] || die "非法 --file"
 
-  python3 - "$AGENT_HOME" "$tail_n" "$grep_pat" <<'PY'
+  python3 - "$AGENT_HOME" "$tail_n" "$grep_pat" "$file_name" <<'PY'
 import json, os, re, sys, time
 
-home, tail_n, grep_pat = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+home, tail_n, grep_pat, file_name = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
 CANDIDATE = [".happy", ".config/happy", ".local/state/happy", ".local/share/happy", ".cache/happy"]
 
 MASK = re.compile(r"[A-Za-z0-9_-]{32,}")
@@ -280,13 +282,21 @@ if tail_n == 0:
                       "candidates": found[:40]}, ensure_ascii=False, indent=2))
     sys.exit(0)
 
-# 只取可能含日志的文本文件，按 mtime 排序取最新
-logs = [f for f in found if f["size"] > 0 and not f["path"].endswith((".db", ".sqlite", ".png", ".lock"))]
-if not logs:
-    print(json.dumps({"error": "未找到 happy 日志文件", "candidates": found[:40]}, ensure_ascii=False, indent=2))
-    sys.exit(0)
-
-newest = max(logs, key=lambda f: f["mtime"])
+# 选文件：优先 --file 指定；否则优先 ~/.happy/logs/*.log，再回退全部文本文件
+if file_name:
+    picked = [f for f in found if os.path.basename(f["path"]) == file_name]
+    if not picked:
+        print(json.dumps({"error": "未找到该日志文件", "candidates": found[:40]}, ensure_ascii=False, indent=2))
+        sys.exit(0)
+    newest = picked[0]
+else:
+    prefer = [f for f in found if f["path"].startswith("~/.happy/logs/") and f["size"] > 0]
+    pool = prefer or [f for f in found
+                      if f["size"] > 0 and not f["path"].endswith((".db", ".sqlite", ".png", ".lock", ".json", ".key"))]
+    if not pool:
+        print(json.dumps({"error": "未找到 happy 日志文件", "candidates": found[:40]}, ensure_ascii=False, indent=2))
+        sys.exit(0)
+    newest = max(pool, key=lambda f: f["mtime"])
 path = newest["path"].replace("~", home, 1)
 try:
     with open(path, encoding="utf-8", errors="replace") as f:
