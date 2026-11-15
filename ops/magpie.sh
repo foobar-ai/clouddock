@@ -130,13 +130,20 @@ case "$group" in
     docker exec magpie magpie library
     ;;
   router)
-    # 只读：从 magpie 的配置文件里取 MCP router 开关（不写任何配置）
-    docker exec magpie sh -c '
-      for f in /config/magpie/settings.json /config/settings.json /config/magpie/config.json; do
-        [ -f "$f" ] || continue
-        echo "--- $f"
-        grep -oiE "\"[a-zA-Z]*router[a-zA-Z]*\"[[:space:]]*:[[:space:]]*(true|false)" "$f" || echo "(未找到 router 键)"
-      done' 2>/dev/null || die "读取失败"
+    case "${1:-}" in
+      on|off)
+        docker exec magpie magpie library mcp router "${1}"
+        ;;
+      *)
+        # 只读：从 magpie 的配置文件里取 MCP router 开关
+        docker exec magpie sh -c '
+          for f in /config/magpie/settings.json /config/settings.json /config/magpie/config.json; do
+            [ -f "$f" ] || continue
+            echo "--- $f"
+            grep -oiE "\"[a-zA-Z]*router[a-zA-Z]*\"[[:space:]]*:[[:space:]]*(true|false)" "$f" || echo "(未找到 router 键)"
+          done' 2>/dev/null || die "读取失败"
+        ;;
+    esac
     ;;
   mcp-call)
     # 只读诊断：调用一次 MCP 工具（仅支持带 query 参数的搜索类工具），并计时

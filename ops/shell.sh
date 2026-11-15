@@ -145,8 +145,14 @@ case "$sub" in
     if [[ "${a[1]:-}" == "library" && "${#a[@]}" -eq 2 ]]; then
       exec "$CLOUDDOCK" magpie library
     fi
-    if [[ "${a[1]:-}" == "router" && "${#a[@]}" -eq 2 ]]; then
-      exec "$CLOUDDOCK" magpie router
+    if [[ "${a[1]:-}" == "router" ]]; then
+      if [[ "${#a[@]}" -eq 2 ]]; then
+        exec "$CLOUDDOCK" magpie router
+      fi
+      if [[ "${#a[@]}" -eq 3 && ( "${a[2]}" == "on" || "${a[2]}" == "off" ) ]]; then
+        exec "$CLOUDDOCK" magpie router "${a[2]}"
+      fi
+      deny "仅支持 magpie router [on|off]"
     fi
     if [[ "${a[1]:-}" == "mcp-tools" && "${#a[@]}" -eq 3 ]]; then
       [[ "${a[2]}" =~ ^/mcp(/[A-Za-z0-9/_-]{0,64})?$ ]] || deny "非法 MCP 路径"
@@ -245,6 +251,17 @@ case "$sub" in
           i=$((i + 1))
         done
         exec "$CLOUDDOCK" agent happy "${args[@]}"
+        ;;
+      mcp)
+        case "${a[2]:-}" in
+          list)    [[ "${#a[@]}" -eq 3 ]] || deny "agent mcp list 不接受参数"
+                   exec "$CLOUDDOCK" agent mcp list ;;
+          add-hub) [[ "${#a[@]}" -eq 3 ]] || deny "agent mcp add-hub 不接受参数"
+                   exec "$CLOUDDOCK" agent mcp add-hub ;;
+          remove)  [[ "${#a[@]}" -eq 3 ]] || deny "agent mcp remove 不接受参数"
+                   exec "$CLOUDDOCK" agent mcp remove ;;
+          *)       deny "agent mcp 仅支持 list / add-hub / remove" ;;
+        esac
         ;;
       gh-token)
         [[ "${a[2]:-}" == "set" && "${#a[@]}" -eq 3 ]] || deny "仅支持 agent gh-token set（token 走 stdin）"

@@ -338,6 +338,35 @@ agent_clone() {
   ok "已 clone 到 $dest"
 }
 
+# ---------- Claude Code 的 MCP 配置 ----------
+agent_mcp() {
+  local sub="${1:-}" key tmp="$AGENT_HOME/.magpie-gwkey.tmp"
+  case "$sub" in
+    list)
+      su - "$AGENT_USER" -c 'claude mcp list'
+      ;;
+    add-hub)
+      key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
+      [[ -n "$key" ]] || die "deploy/.env 缺少 MAGPIE_GATEWAY_KEY"
+      ( umask 077; printf '%s' "$key" > "$tmp" )
+      chown "$AGENT_USER":"$AGENT_USER" "$tmp"
+      chmod 600 "$tmp"
+      su - "$AGENT_USER" -c 'claude mcp add --transport http magpie \
+        http://127.0.0.1:3425/mcp/magpie/hub/claude \
+        --header "Authorization: Bearer $(cat ~/.magpie-gwkey.tmp)" --scope user' \
+        || { rm -f "$tmp"; die "claude mcp add 失败"; }
+      rm -f "$tmp"
+      ok "magpie hub 已写入 agent 的 Claude Code（scope=user）"
+      ;;
+    remove)
+      su - "$AGENT_USER" -c 'claude mcp remove magpie --scope user'
+      ;;
+    *)
+      die "用法: clouddock agent mcp list|add-hub|remove"
+      ;;
+  esac
+}
+
 agent_gh_token_set() {
   [[ "${1:-}" == "--stdin" ]] || die "用法: clouddock agent gh-token set --stdin（token 走 stdin，不进命令行）"
   [[ -f "$SETTINGS" ]] || die "未找到 $SETTINGS（先 clouddock claude apply）。"
@@ -377,6 +406,7 @@ case "$cmd" in
   clone)      agent_clone "${1:-}" ;;
   sessions)   agent_sessions "$@" ;;
   happy)      agent_happy "$@" ;;
+  mcp)        shift || true; agent_mcp "$@" ;;
   gh-token)
     [[ "${1:-}" == "set" ]] || usage
     shift || true
