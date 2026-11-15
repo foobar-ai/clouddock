@@ -98,9 +98,9 @@ case "$group" in
   group)
     sub="${1:-}"
     case "$sub" in
-      "")     docker exec magpie magpie group ;;
-      list)   docker exec magpie magpie group list ;;
-      *)      usage ;;
+      ""|list) docker exec magpie magpie groups ;;
+      *)  [[ "$sub" =~ ^[a-z0-9][a-z0-9._-]{0,63}$ ]] || usage
+          docker exec magpie magpie group "$sub" ;;
     esac
     ;;
   plugin)

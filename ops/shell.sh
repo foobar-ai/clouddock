@@ -134,10 +134,11 @@ case "$sub" in
       if [[ "${#a[@]}" -eq 2 ]]; then
         exec "$CLOUDDOCK" magpie group
       fi
-      if [[ "${#a[@]}" -eq 3 && "${a[2]}" == "list" ]]; then
-        exec "$CLOUDDOCK" magpie group list
+      if [[ "${#a[@]}" -eq 3 ]]; then
+        [[ "${a[2]}" =~ ^[a-z0-9][a-z0-9._-]{0,63}$ ]] || deny "非法组标识：${a[2]}"
+        exec "$CLOUDDOCK" magpie group "${a[2]}"
       fi
-      deny "仅支持 magpie group [list]"
+      deny "仅支持 magpie group [<id>]"
     fi
     if [[ "${a[1]:-}" == "probe" ]]; then
       [[ "${#a[@]}" -ge 3 && "${#a[@]}" -le 5 ]] || deny "magpie probe 需 1 个模型名，可选 --max-tokens=N / --thinking=N"
