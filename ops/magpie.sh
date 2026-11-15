@@ -121,6 +121,18 @@ case "$group" in
       || die "查询 MCP 列表失败"
     echo
     ;;
+  runtime)
+    # 只读：确认 magpie 容器内可用的运行时（决定命令型 MCP server 能否启动）
+    docker exec magpie sh -c '
+      for c in sh node npx bun uv uvx python3 git; do
+        if command -v "$c" >/dev/null 2>&1; then printf "%-8s %s\n" "$c" "$(command -v "$c")";
+        else printf "%-8s (缺失)\n" "$c"; fi
+      done
+      echo "--- versions"
+      node -v 2>/dev/null || true
+      bun --version 2>/dev/null || true
+      python3 -V 2>/dev/null || true' 2>&1 || die "容器内无 sh（可能是 distroless 镜像）"
+    ;;
   search)
     # 只读：列出已配置的搜索来源（provider 搜索 / Search API）及顺序
     docker exec magpie magpie search
