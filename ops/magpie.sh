@@ -202,12 +202,13 @@ print(json.dumps({"jsonrpc":"2.0","id":1,"method":"tools/call",
         -d '{"jsonrpc":"2.0","method":"notifications/initialized"}' || true
     fi
 
-    curl -s -m 25 -X POST "$url" \
+    tl="$(curl -s -m 40 -w '\nHTTP:%{http_code}' -X POST "$url" \
       -H "Authorization: Bearer ${key}" \
       ${sid:+-H "Mcp-Session-Id: ${sid}"} \
       -H 'Content-Type: application/json' \
       -H 'Accept: application/json, text/event-stream' \
-      -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | head -c 4000
+      -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' || true)"
+    printf '%s\n' "$tl" | head -c 4000
     echo
     [[ -n "$sid" ]] && log "session=$sid" || warn "未拿到 Mcp-Session-Id（该端点可能无状态或不支持 initialize）"
     ;;
