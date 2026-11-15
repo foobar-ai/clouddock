@@ -57,20 +57,22 @@ PY
   payload="${resp%$'\n'*}"
   logs="$(docker logs --tail=60 magpie 2>&1 | grep -E "call to .* failed|call to " | tail -n3 || true)"
 
-  payload="$(printf '%s' "$payload" | redact | head -c 600)"
+  payload="$(printf '%s' "$payload" | redact)"
 
-  python3 - "$model" "$code" "$payload" "$logs" "$elapsed_ms" <<'PY'
+  # 用 -c 而非 heredoc：heredoc 会占用 stdin，且按字节读可避免多字节字符被截断产生非法 UTF-8
+  printf '%s' "$payload" | python3 -c '
 import json, sys
-model, code, payload, logs, elapsed = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+model, code, logs, elapsed = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+body = sys.stdin.buffer.read().decode("utf-8", "replace")
 print(json.dumps({
     "requested_model": model,
     "http_status": code,
     "ok": code.startswith("2"),
     "elapsed_ms": int(elapsed),
-    "response_head": payload[:600],
+    "response_head": body[:800],
     "gateway_log": [l for l in logs.splitlines() if l.strip()],
 }, ensure_ascii=False, indent=2))
-PY
+' "$model" "$code" "$logs" "$elapsed_ms"
 }
 
 group="${1:-}"
