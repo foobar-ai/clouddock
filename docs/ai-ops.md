@@ -60,6 +60,7 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `magpie gwkey list` | 列 magpie 网关密钥（打码） |
 | `magpie gwkey add <name>` | 新增网关密钥（一次性返回） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
+| `magpie plugin list` | 插件状态（只读） | 模型重定向插件是否生效看这里 |
 | `tools ensure <tool>` | 受控安装工具 | apt 官方源；白名单目前只放行 `tmux` |
 | `agent git [--check-push]` | agent 的 GitHub 访问诊断 | SSH 资产/认证身份/git 身份/仓库 remote；`--check-push` 走 `push --dry-run`（不写入） |
 | `agent git-setup` | 让 git 走 PAT | 安装 credential helper + `git@github.com:` → https 重写 |
@@ -142,3 +143,4 @@ cd /opt/clouddock
 ```
 
 > 详见 `skills/clouddock-ops/SKILL.md`（AI 侧调用约定）与 `docs/add-service.md`（服务结构约定）。
+> 模型路由与「手机端切模型 404」的成因/两套处置方案：见 `docs/model-routing.md`。

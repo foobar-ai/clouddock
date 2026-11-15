@@ -123,6 +123,7 @@ bash scripts/clouddock-ops-ssh.sh claude doctor                       # 自检�
 - `apply` 保留模板外的敏感与环境项（`GH_TOKEN`、`deploy/.env` 的 `MAGPIE_GATEWAY_KEY`、你自行追加的 env），并丢弃会与模型矩阵冲突的遗留键 `ANTHROPIC_MODEL` / `ANTHROPIC_AUTH_TOKEN`。
 - 模板不含本机专属项：`statusLine`（ccline 二进制）、`extraKnownMarketplaces`（本机插件市场）、代理变量（`HTTPS_PROXY` 等）。`teammateMode: tmux` 需 VPS 装有 tmux：`bash scripts/clouddock-ops-ssh.sh tools ensure tmux`（apt 官方源，受控白名单只放行 tmux），`claude doctor` 会显示是否就绪。
 - 模型名支持 `group/xxx[1m]` 形式；`CLAUDE_CODE_MODEL_CAPABILITIES` 自动取去掉 `[1m]` 的基础名（如 `group/free=effort`）。
+- 手机端（Happy 等遥控端）把模型切到 Anthropic 具体 ID（如 `claude-opus-5`）会 404 unknown model——tier 映射只对 `sonnet/opus/haiku` 生效。处置方案（网关中间件 / 客户端清单收紧）见 `docs/model-routing.md`。
 
 #### agent 的 GitHub 写权限（PAT）
 
@@ -321,6 +322,7 @@ clouddock/
 
 - 架构说明：见 `docs/architecture.md`。
 - 本地 Claude Code 接入：见 `docs/claude-code-local.md`。
+- 模型路由与「手机端切模型 404」：见 `docs/model-routing.md`。
 - 新增服务：见 `docs/add-service.md`。
 - AI 运维：见 `docs/ai-ops.md`（及 `skills/clouddock-ops/SKILL.md`）。
 - 项目计划（设计决策与背景）：见 `docs/plan.md`。

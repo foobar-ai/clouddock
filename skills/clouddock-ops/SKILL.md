@@ -44,6 +44,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `magpie gwkey list` | 列 magpie 网关密钥（打码） |
 | `magpie gwkey add <name>` | 新增网关密钥（key 只打印一次） |
 | `magpie gwkey remove <name\|id>` | 吊销网关密钥 |
+| `magpie plugin list` | magpie 插件状态 | 只读；模型重定向插件（model-map）是否生效看这里 |
 | `tools ensure <tool>` | 受控装工具 | apt 官方源；白名单目前仅 `tmux` |
 | `agent git [--check-push]` | agent 的 GitHub 访问诊断 | SSH 资产/认证/git 身份/仓库 remote；`--check-push` = `git push --dry-run` |
 | `agent git-setup` | 让 git 走 PAT | 装 credential helper（读 settings.json 的 `GH_TOKEN`）+ `git@github.com:` → https 重写 |
@@ -75,6 +76,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - 「VPS 上 Claude Code 用哪个模型 / 改成 group/xxx」→ `claude` / `claude set-model group/xxx`
 - 「按项目模板收敛 Claude Code 配置 / 恢复参考配置」→ `claude apply --model group/free[1m]`
 - 「Claude Code 是不是装坏了 / 连不上 magpie」→ `claude doctor`
+- 「手机切了模型后报找不到模型 / unknown model」→ `claude show` + `agent sessions --errors` + `logs magpie`；处置方案见 `docs/model-routing.md`（网关 model-map 插件 / 客户端清单收紧），先诊断再动手，别急着改配置
 - 「VPS 缺 tmux / Agent Teams 不能分屏」→ `tools ensure tmux`
 - 「agent 能不能 push GitHub / SSH 有没有配好 / 仓库 remote 是什么」→ `agent git`；要验证写权限 → `agent git --check-push`
 - 「让 agent 用 PAT 推代码 / git 提示要 Username」→ `agent git-setup`（PAT 范围与 Contents 写权限由用户在 GitHub 侧保证）
