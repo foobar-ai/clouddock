@@ -130,8 +130,9 @@ case "$group" in
     docker exec magpie magpie library
     ;;
   router)
-    # 只读：MCP router 开关状态
-    docker exec magpie magpie library mcp router || true
+    # 只读：MCP router 开关状态（从 settings 里取，不写配置）
+    docker exec magpie magpie settings 2>/dev/null | grep -iE "router|mcp" || \
+      docker exec magpie magpie library mcp router 2>&1 | head -n5
     ;;
   mcp-call)
     # 只读诊断：调用一次 MCP 工具（仅支持带 query 参数的搜索类工具），并计时
