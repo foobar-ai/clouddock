@@ -4,6 +4,7 @@
 #   clouddock agent git [--check-push]   SSH 资产/认证/git 身份/仓库 remote；--check-push 走 push --dry-run
 #   clouddock agent git-setup            安装 credential helper + git@github.com: → https 重写
 #   clouddock agent clone <owner/repo>   以 agent 身份 clone 到 ~agent/projects/<repo>
+#   clouddock agent sessions [--errors] [--limit=N]   查 Claude Code session 日志（只读）
 #   clouddock agent gh-token set         （stdin 传 token）更新 settings.json 的 GH_TOKEN
 set -euo pipefail
 
@@ -25,6 +26,7 @@ usage() {
   agent git [--check-push]   GitHub 访问诊断（只读）
   agent git-setup            配置 git 走 PAT（credential helper + SSH URL 重写）
   agent clone <owner/repo>   clone 到 ~agent/projects/<repo>
+  agent sessions [--errors] [--limit=N]  Claude Code session 日志摘要（--errors 仅报错行）
   agent gh-token set         stdin 传入新 PAT，写入 ~agent/.claude/settings.json
 EOF
   exit 2
@@ -150,6 +152,80 @@ agent_git_setup() {
   log "提醒：PAT 需把目标仓库加入 Repository access，权限 Contents: Read and write。"
 }
 
+# ---------- session 日志排查 ----------
+agent_sessions() {
+  local errors_only=0 limit=3
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --errors) errors_only=1; shift ;;
+      --limit=*) limit="${1#--limit=}"; shift ;;
+      *) die "未知参数：$1" ;;
+    esac
+  done
+  [[ "$limit" =~ ^[0-9]{1,2}$ ]] || die "非法 --limit（1-99）"
+
+  python3 - "$AGENT_HOME" "$errors_only" "$limit" <<'PY'
+import glob, json, os, re, sys
+
+home, errors_only, limit = sys.argv[1], sys.argv[2] == "1", int(sys.argv[3])
+files = sorted(glob.glob(os.path.join(home, ".claude/projects/*/*.jsonl")),
+               key=os.path.getmtime, reverse=True)[:limit]
+
+ERR_RE = re.compile(r"API Error|unknown model|not_found|invalid_request|\b(400|401|403|404|429|500|502|503)\b")
+
+
+def text_of(rec):
+    msg = rec.get("message") or {}
+    content = msg.get("content")
+    parts = []
+    if isinstance(content, str):
+        parts.append(content)
+    elif isinstance(content, list):
+        for c in content:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "text":
+                parts.append(c.get("text", ""))
+            elif c.get("type") == "tool_result":
+                t = c.get("content")
+                if isinstance(t, str):
+                    parts.append(t)
+    return " ".join(p for p in parts if p)
+
+
+out = []
+for path in files:
+    try:
+        f = open(path, encoding="utf-8", errors="replace")
+    except OSError:
+        continue
+    with f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            txt = text_of(rec)
+            is_err = bool(rec.get("isApiErrorMessage")) or bool(ERR_RE.search(txt or ""))
+            if errors_only and not is_err:
+                continue
+            out.append({
+                "file": os.path.basename(path),
+                "ts": rec.get("timestamp", ""),
+                "type": rec.get("type", ""),
+                "error": is_err,
+                "model": ((rec.get("message") or {}).get("model") or ""),
+                "text": (txt[:300] + "…") if len(txt) > 300 else txt,
+            })
+
+print(json.dumps({"files": [os.path.basename(p) for p in files], "entries": out[-40:]},
+                 ensure_ascii=False, indent=2))
+PY
+}
+
 agent_clone() {
   local spec="${1:-}" name dest out
   [[ "$spec" =~ ^[A-Za-z0-9_.-]{1,64}/[A-Za-z0-9_.-]{1,100}$ ]] \
@@ -204,6 +280,7 @@ case "$cmd" in
   git)        agent_git "$@" ;;
   git-setup)  agent_git_setup ;;
   clone)      agent_clone "${1:-}" ;;
+  sessions)   agent_sessions "$@" ;;
   gh-token)
     [[ "${1:-}" == "set" ]] || usage
     shift || true

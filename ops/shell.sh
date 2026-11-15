@@ -159,6 +159,20 @@ case "$sub" in
         [[ "${a[2]}" =~ ^[A-Za-z0-9_.-]{1,64}/[A-Za-z0-9_.-]{1,100}$ ]] || deny "非法仓库标识：${a[2]}"
         exec "$CLOUDDOCK" agent clone "${a[2]}"
         ;;
+      sessions)
+        # 只读：agent 的 Claude Code session 日志排查
+        args=()
+        i=2
+        while [[ $i -lt ${#a[@]} ]]; do
+          case "${a[$i]}" in
+            --errors)    args+=(--errors) ;;
+            --limit=[0-9]*) args+=("${a[$i]}") ;;
+            *)           deny "agent sessions 仅支持 [--errors] [--limit=N]" ;;
+          esac
+          i=$((i + 1))
+        done
+        exec "$CLOUDDOCK" agent sessions "${args[@]}"
+        ;;
       gh-token)
         [[ "${a[2]:-}" == "set" && "${#a[@]}" -eq 3 ]] || deny "仅支持 agent gh-token set（token 走 stdin）"
         exec "$CLOUDDOCK" agent gh-token set --stdin
