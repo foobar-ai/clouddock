@@ -230,6 +230,83 @@ print(json.dumps({"files": [os.path.basename(p) for p in files], "entries": out[
 PY
 }
 
+# ---------- happy 日志排查 ----------
+agent_happy() {
+  local tail_n=0 grep_pat=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --tail=*) tail_n="${1#--tail=}"; shift ;;
+      --grep=*) grep_pat="${1#--grep=}"; shift ;;
+      *) die "未知参数：$1" ;;
+    esac
+  done
+  [[ "$tail_n" =~ ^[0-9]{1,5}$ ]] || die "非法 --tail（0-99999）"
+  [[ -z "$grep_pat" || "$grep_pat" =~ ^[A-Za-z0-9/_.:-]{1,64}$ ]] || die "非法 --grep（仅字母数字及 / _ . : -）"
+
+  python3 - "$AGENT_HOME" "$tail_n" "$grep_pat" <<'PY'
+import json, os, re, sys, time
+
+home, tail_n, grep_pat = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+CANDIDATE = [".happy", ".config/happy", ".local/state/happy", ".local/share/happy", ".cache/happy"]
+
+MASK = re.compile(r"[A-Za-z0-9_-]{32,}")
+
+
+def files_in(root):
+    out = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        depth = dirpath[len(root):].count(os.sep)
+        if depth >= 3:
+            dirnames[:] = []
+        for n in filenames:
+            p = os.path.join(dirpath, n)
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            out.append({"path": p.replace(home, "~"), "size": st.st_size,
+                        "mtime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime))})
+    return out
+
+
+found = []
+for rel in CANDIDATE:
+    root = os.path.join(home, rel)
+    if os.path.isdir(root):
+        found.extend(files_in(root))
+
+if tail_n == 0:
+    print(json.dumps({"hint": "agent happy --tail=200 查看最新日志末尾",
+                      "candidates": found[:40]}, ensure_ascii=False, indent=2))
+    sys.exit(0)
+
+# 只取可能含日志的文本文件，按 mtime 排序取最新
+logs = [f for f in found if f["size"] > 0 and not f["path"].endswith((".db", ".sqlite", ".png", ".lock"))]
+if not logs:
+    print(json.dumps({"error": "未找到 happy 日志文件", "candidates": found[:40]}, ensure_ascii=False, indent=2))
+    sys.exit(0)
+
+newest = max(logs, key=lambda f: f["mtime"])
+path = newest["path"].replace("~", home, 1)
+try:
+    with open(path, encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()[-tail_n:]
+except OSError as e:
+    print(json.dumps({"error": str(e)}, ensure_ascii=False, indent=2))
+    sys.exit(0)
+
+sel = []
+for line in lines:
+    line = line.rstrip("\n")
+    if grep_pat and grep_pat not in line:
+        continue
+    sel.append(MASK.sub("***", line)[:500])
+
+print(json.dumps({"file": newest["path"], "mtime": newest["mtime"],
+                  "lines": len(sel), "content": sel}, ensure_ascii=False, indent=2))
+PY
+}
+
 agent_clone() {
   local spec="${1:-}" name dest out
   [[ "$spec" =~ ^[A-Za-z0-9_.-]{1,64}/[A-Za-z0-9_.-]{1,100}$ ]] \
@@ -285,6 +362,7 @@ case "$cmd" in
   git-setup)  agent_git_setup ;;
   clone)      agent_clone "${1:-}" ;;
   sessions)   agent_sessions "$@" ;;
+  happy)      agent_happy "$@" ;;
   gh-token)
     [[ "${1:-}" == "set" ]] || usage
     shift || true

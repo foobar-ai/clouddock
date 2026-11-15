@@ -120,7 +120,11 @@ case "$sub" in
     esac
     ;;
   magpie)
-    [[ "${a[1]:-}" == "gwkey" ]] || deny "仅支持 magpie gwkey"
+    if [[ "${a[1]:-}" == "plugin" ]]; then
+      [[ "${a[2]:-}" == "list" && "${#a[@]}" -eq 3 ]] || deny "仅支持 magpie plugin list"
+      exec "$CLOUDDOCK" magpie plugin list
+    fi
+    [[ "${a[1]:-}" == "gwkey" ]] || deny "仅支持 magpie gwkey / plugin list"
     case "${a[2]:-}" in
       list)
         [[ "${#a[@]}" -eq 3 ]] || deny "gwkey list 不接受参数"
@@ -173,6 +177,19 @@ case "$sub" in
           i=$((i + 1))
         done
         exec "$CLOUDDOCK" agent sessions "${args[@]}"
+        ;;
+      happy)
+        args=()
+        i=2
+        while [[ $i -lt ${#a[@]} ]]; do
+          case "${a[$i]}" in
+            --tail=[0-9]*) args+=("${a[$i]}") ;;
+            --grep=[A-Za-z0-9/_.:-]*) args+=("${a[$i]}") ;;
+            *) deny "agent happy 仅支持 [--tail=N] [--grep=xxx]" ;;
+          esac
+          i=$((i + 1))
+        done
+        exec "$CLOUDDOCK" agent happy "${args[@]}"
         ;;
       gh-token)
         [[ "${a[2]:-}" == "set" && "${#a[@]}" -eq 3 ]] || deny "仅支持 agent gh-token set（token 走 stdin）"

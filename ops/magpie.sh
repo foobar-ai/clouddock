@@ -10,7 +10,7 @@ source "$SCRIPT_DIR/lib.sh"
 require_root
 
 usage() {
-  echo "用法: clouddock magpie gwkey list|add <name>|remove <name|id>" >&2
+  echo "用法: clouddock magpie gwkey list|add <name>|remove <name|id> | plugin list" >&2
   exit 2
 }
 
@@ -42,6 +42,13 @@ case "$group" in
       *)
         usage
         ;;
+    esac
+    ;;
+  plugin)
+    sub="${1:-}"
+    case "$sub" in
+      list) docker exec magpie magpie plugin list ;;
+      *)    usage ;;
     esac
     ;;
   *)
