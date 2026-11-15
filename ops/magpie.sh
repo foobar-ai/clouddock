@@ -36,10 +36,11 @@ PY
   payload="${resp%$'\n'*}"
   logs="$(docker logs --tail=60 magpie 2>&1 | grep -E "call to .* failed|call to " | tail -n3 || true)"
 
-  printf '%s' "$payload" | redact | python3 - "$model" "$code" "$logs" <<'PY'
+  payload="$(printf '%s' "$payload" | redact | head -c 400)"
+
+  python3 - "$model" "$code" "$payload" "$logs" <<'PY'
 import json, sys
-model, code, logs = sys.argv[1], sys.argv[2], sys.argv[3]
-payload = sys.stdin.read()
+model, code, payload, logs = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 print(json.dumps({
     "requested_model": model,
     "http_status": code,
