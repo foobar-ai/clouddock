@@ -38,7 +38,7 @@ docker_pull_check() {
   log "拉取健康检查（官方 registry，默认不配第三方加速）..."
   # 失败仅告警不中断：05-services 阶段会再次 compose pull 重试
   docker pull calciumion/new-api:latest || warn "new-api 镜像拉取失败（稍后 compose pull 会重试）。"
-  docker pull ghcr.io/yetone/magpie:latest || warn "magpie 镜像拉取失败（稍后 compose pull 会重试）。"
+  # magpie 已改为原生部署（04b 阶段用官方安装脚本），容器镜像不再需要预拉
 }
 
 if ! docker_done; then

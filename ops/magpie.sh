@@ -9,6 +9,10 @@ source "$SCRIPT_DIR/lib.sh"
 
 require_root
 
+AGENT_USER="agent"
+MAGPIE_BIN="/home/agent/.local/bin/magpie"
+MAGPIE_CFG="/home/agent/.config/magpie"
+
 usage() {
   echo "用法: clouddock magpie gwkey list|add <name>|remove <name|id> | plugin list | probe <model>" >&2
   exit 2
@@ -86,19 +90,19 @@ case "$group" in
     shift || true
     case "$sub" in
       list)
-        docker exec magpie magpie gateway-key list
+        su - agent -c "$MAGPIE_BIN gateway-key list"
         ;;
       add)
         name="${1:-}"
         [[ -n "$name" ]] || die "用法: clouddock magpie gwkey add <name>"
         [[ "$name" =~ ^[A-Za-z0-9._-]{1,32}$ ]] || die "非法 key 名称：$name"
-        docker exec magpie magpie gateway-key add "$name"
+        su - agent -c "$MAGPIE_BIN gateway-key add $(printf %q "$name")"
         ;;
       remove)
         sel="${1:-}"
         [[ -n "$sel" ]] || die "用法: clouddock magpie gwkey remove <name|id>"
         [[ "$sel" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || die "非法 key 标识：$sel"
-        docker exec magpie magpie gateway-key remove "$sel"
+        su - agent -c "$MAGPIE_BIN gateway-key remove $(printf %q "$sel")"
         ;;
       *)
         usage
@@ -108,9 +112,9 @@ case "$group" in
   group)
     sub="${1:-}"
     case "$sub" in
-      ""|list) docker exec magpie magpie groups ;;
+      ""|list) su - agent -c "$MAGPIE_BIN groups" ;;
       *)  [[ "$sub" =~ ^[a-z0-9][a-z0-9._-]{0,63}$ ]] || usage
-          docker exec magpie magpie group "$sub" ;;
+          su - agent -c "$MAGPIE_BIN group $(printf %q "$sub")" ;;
     esac
     ;;
   mcp)
@@ -122,54 +126,59 @@ case "$group" in
     echo
     ;;
   files)
-    # 只读：容器 /config 卷的结构（迁移到原生前要知道拷哪些）
-    docker exec magpie sh -c 'find /config -mindepth 1 -maxdepth 2 | sort | head -60'
+    # 只读：原生 magpie 配置目录结构
+    find /home/agent/.config/magpie -mindepth 1 -maxdepth 2 2>/dev/null | sort | head -60 || echo "(未初始化)"
     ;;
   native-status)
-    # 只读：宿主是否已有原生 magpie、agent 是否有 linger、3425/3430 谁在监听
+    # 只读：当前 magpie 形态（原生 / 残留容器）与端口占用
     echo "--- 宿主 magpie"
     command -v magpie || echo "(PATH 中无 magpie)"
     ls -l /home/agent/.local/bin/magpie 2>/dev/null || echo "(agent 用户下无 magpie)"
     echo "--- linger"
     loginctl show-user agent -p Linger 2>/dev/null || echo "(无法查询 linger)"
-    echo "--- agent systemd user units"
-    ls /home/agent/.config/systemd/user 2>/dev/null | head -20 || echo "(无)"
+    echo "--- systemd unit"
+    systemctl is-enabled magpie 2>/dev/null || echo "(未启用 magpie.service)"
+    echo "--- 残留容器"
+    docker ps -a --format "{{.Names}} {{.Status}}" 2>/dev/null | grep -x "magpie.*" || echo "(无 magpie 容器)"
     echo "--- 端口"
     ss -lntp 2>/dev/null | grep -E ':(3425|3430)\b' || echo "(3425/3430 未监听)"
     ;;
   runtime)
-    # 只读：确认 magpie 容器内可用的运行时（决定命令型 MCP server 能否启动）
-    docker exec magpie sh -c '
-      for c in sh node npx bun uv uvx python3 git; do
-        if command -v "$c" >/dev/null 2>&1; then printf "%-8s %s\n" "$c" "$(command -v "$c")";
-        else printf "%-8s (缺失)\n" "$c"; fi
-      done
-      echo "--- versions"
-      node -v 2>/dev/null || true
-      bun --version 2>/dev/null || true
-      python3 -V 2>/dev/null || true' 2>&1 || die "容器内无 sh（可能是 distroless 镜像）"
+    # 只读：原生 magpie 依赖的宿主运行时（命令型 MCP server 全靠它们）
+    for c in node npx bun uv uvx python3 git; do
+      if command -v "$c" >/dev/null 2>&1; then printf "%-8s %s\n" "$c" "$(command -v "$c")";
+      else printf "%-8s (缺失)\n" "$c"; fi
+    done
+    echo "--- versions"
+    node -v 2>/dev/null || true
+    bun --version 2>/dev/null || true
+    python3 -V 2>/dev/null || true
+    echo "--- magpie"
+    if [[ -x "$MAGPIE_BIN" ]]; then "$MAGPIE_BIN" version 2>/dev/null | head -n1; else echo "(未安装)"; fi
+    systemctl is-active magpie 2>/dev/null || true
     ;;
   search)
     # 只读：列出已配置的搜索来源（provider 搜索 / Search API）及顺序
-    docker exec magpie magpie search
+    su - agent -c "$MAGPIE_BIN search"
     ;;
   library)
     # 只读：Library 概况（哪些 agent 走 MCP router、哪些保留独立条目）
-    docker exec magpie magpie library
+    su - agent -c "$MAGPIE_BIN library"
     ;;
   router)
     case "${1:-}" in
       on|off)
-        docker exec magpie magpie library mcp router "${1}"
+        su - agent -c "$MAGPIE_BIN library mcp router ${1}"
         ;;
       *)
-        # 只读：从 magpie 的配置文件里取 MCP router 开关
-        docker exec magpie sh -c '
-          for f in /config/magpie/settings.json /config/settings.json /config/magpie/config.json; do
-            [ -f "$f" ] || continue
-            echo "--- $f"
-            grep -oiE "\"[a-zA-Z]*router[a-zA-Z]*\"[[:space:]]*:[[:space:]]*(true|false)" "$f" || echo "(未找到 router 键)"
-          done' 2>/dev/null || die "读取失败"
+        # 只读：从原生配置里取 MCP router 开关
+        if [[ -f "$MAGPIE_CFG/settings.json" ]]; then
+          echo "--- $MAGPIE_CFG/settings.json"
+          grep -oiE "\"[a-zA-Z]*router[a-zA-Z]*\"[[:space:]]*:[[:space:]]*(true|false)" "$MAGPIE_CFG/settings.json" \
+            || echo "(未找到 router 键)"
+        else
+          echo "(magpie 未初始化：$MAGPIE_CFG/settings.json 不存在)"
+        fi
         ;;
     esac
     ;;
@@ -231,11 +240,11 @@ print(json.dumps({"jsonrpc":"2.0","id":1,"method":"tools/call",
   plugin)
     sub="${1:-}"
     case "$sub" in
-      list) docker exec magpie magpie plugin list ;;
+      list) su - agent -c "$MAGPIE_BIN plugin list" ;;
       options)
         name="${2:-}"
         [[ "$name" =~ ^[a-z0-9-]{1,32}$ ]] || die "用法: clouddock magpie plugin options <name>（只读，不传 JSON）"
-        docker exec magpie magpie plugin options "$name"
+        su - agent -c "$MAGPIE_BIN plugin options $(printf %q "$name")"
         ;;
       *) usage ;;
     esac

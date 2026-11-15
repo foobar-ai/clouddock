@@ -21,7 +21,8 @@ MAGPIE_URL="${CLAUDE_BASE_URL:-http://127.0.0.1:3425}"
 DEFAULT_MODEL="${CLAUDE_MODEL:-group/free[1m]}"
 
 usage() {
-  echo "用法: clouddock claude [show | apply [--model <model>] | set-model <model> | doctor]" >&2
+  echo "用法: clouddock claude [show | apply [--model <model>] [--force] | set-model <model> | doctor]" >&2
+  echo "  apply 仅做首次初始化（已存在则需 --force）；之后配置真源归 magpie。" >&2
   exit 2
 }
 
@@ -80,9 +81,13 @@ PY
 
 # 以模板为准渲染 settings.json：模板为唯一真源，敏感项跨次保留
 apply_template() {
-  local model="${1:-$DEFAULT_MODEL}"
+  local model="${1:-$DEFAULT_MODEL}" force="${2:-0}"
   valid_model "$model" || die "非法模型名：$model"
   [[ -f "$TEMPLATE" ]] || die "未找到模板：$TEMPLATE（clouddock upgrade 可补齐）。"
+  # 真源策略：模板只做首次初始化，之后配置归 magpie 管理，避免两处互相覆盖
+  if [[ -f "$SETTINGS" && "$force" != "1" ]]; then
+    die "已存在 $SETTINGS：配置真源已交给 magpie（模板只做首次初始化）。确需重置请加 --force。"
+  fi
 
   local gw_key=""
   gw_key="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
@@ -243,13 +248,15 @@ case "$action" in
   apply)
     shift || true
     model="$DEFAULT_MODEL"
+    force=0
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --model) [[ $# -ge 2 ]] || die "--model 缺少值"; model="$2"; shift 2 ;;
+        --force) force=1; shift ;;
         *) die "未知参数：$1" ;;
       esac
     done
-    apply_template "$model"
+    apply_template "$model" "$force"
     ;;
   set-model) shift || true; set_model "${1:-}" ;;
   *)         usage ;;

@@ -72,12 +72,13 @@ if [[ "$key" == "MAGPIE_WEB_KEY" && ${#val} -lt 16 ]]; then
   die "MAGPIE_WEB_KEY 至少 16 字符（当前 ${#val}）；magpie 启动会拒绝过短密钥。"
 fi
 
-# 按前缀推断目标服务（--svc 优先）
+# 按前缀推断目标（--svc 优先）；magpie 已改为宿主原生 + systemd，不再是 compose 服务
 case "$key" in
-  MAGPIE_*) svc="${svc:-magpie}" ;;
+  MAGPIE_WEB_KEY|MAGPIE_PUBLIC_URL) svc="${svc:-__magpie_native__}" ;;
+  MAGPIE_*) svc="" ;;                          # 其余 MAGPIE_* 只写 .env
   NEWAPI_*) svc="${svc:-new-api}" ;;
 esac
-if [[ -n "$svc" ]]; then
+if [[ -n "$svc" && "$svc" != "__magpie_native__" ]]; then
   require_svc "$svc"
 fi
 
@@ -90,7 +91,21 @@ chmod 600 "$ENV_FILE"
 printf '%s=%s\n' "$key" "$val" >> "$ENV_FILE"
 ok "已写入 $key（值不回显）。"
 
-if [[ -n "$svc" ]]; then
+if [[ "$svc" == "__magpie_native__" ]]; then
+  mf="$DEPLOY_DIR/deploy/magpie.env"
+  mkdir -p "$(dirname "$mf")"
+  ( umask 077
+    {
+      echo "HOME=/home/agent"
+      echo "TZ=Asia/Shanghai"
+      printf 'MAGPIE_WEB_KEY=%s\n' "$(env_get MAGPIE_WEB_KEY 2>/dev/null || true)"
+      printf 'MAGPIE_PUBLIC_URL=%s\n' "$(env_get MAGPIE_PUBLIC_URL 2>/dev/null || true)"
+    } > "$mf"
+  )
+  chmod 600 "$mf"
+  systemctl restart magpie
+  ok "已同步 deploy/magpie.env 并重启原生 magpie（systemd）。"
+elif [[ -n "$svc" ]]; then
   compose_files
   log "仅重建目标服务 $svc ..."
   compose_up_svc "$svc"

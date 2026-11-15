@@ -31,9 +31,8 @@ build_compose_files() {
 
 services_run() {
   log "准备数据目录与权限..."
+  # magpie 已改为原生部署（04b 阶段），这里只保留其旧卷作为迁移源
   mkdir -p "$DATA_DIR/new-api" "$DATA_DIR/magpie"
-  # magpie 容器内 nonroot uid 65532，需可写 /config
-  chown -R 65532:65532 "$DATA_DIR/magpie"
 
   build_compose_files
   log "拉取镜像并启动所有服务..."

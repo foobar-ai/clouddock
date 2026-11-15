@@ -102,12 +102,20 @@ case "$sub" in
         exec "$CLOUDDOCK" claude "$act"
         ;;
       apply)
-        if [[ "${#a[@]}" -eq 2 ]]; then
-          exec "$CLOUDDOCK" claude apply
-        fi
-        [[ "${#a[@]}" -eq 4 && "${a[2]}" == "--model" ]] || deny "claude apply 仅支持 [--model <model>]"
-        [[ "${a[3]}" =~ $MODEL_RE ]] || deny "非法模型名"
-        exec "$CLOUDDOCK" claude apply --model "${a[3]}"
+        cargs=()
+        i=2
+        while [[ $i -lt ${#a[@]} ]]; do
+          case "${a[$i]}" in
+            --force) cargs+=(--force) ;;
+            --model) [[ $((i + 1)) -lt ${#a[@]} ]] || deny "--model 缺少值"
+                     [[ "${a[$((i + 1))]}" =~ $MODEL_RE ]] || deny "非法模型名"
+                     cargs+=(--model "${a[$((i + 1))]}")
+                     i=$((i + 1)) ;;
+            *)       deny "claude apply 仅支持 [--model <m>] [--force]" ;;
+          esac
+          i=$((i + 1))
+        done
+        exec "$CLOUDDOCK" claude apply "${cargs[@]}"
         ;;
       set-model)
         [[ "${#a[@]}" -eq 3 ]] || deny "claude set-model 需且仅需 1 个模型名"
