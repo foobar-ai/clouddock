@@ -75,7 +75,7 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `agent clone <owner/repo>` | 以 agent 身份 clone | 落到 `~agent/projects/<repo>`（走 PAT） |
 | `agent gh-token set` | 轮换 PAT | token 走 stdin，写入 `~agent/.claude/settings.json` 的 `GH_TOKEN`（600） |
 
-`env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
+`env set` 允许的键：`MAGPIE_WEB_KEY`、`MAGPIE_PUBLIC_URL`、`TRAFFIC_QUOTA_GB`、`NEWAPI_SQL_DSN`（含密码，用 `--stdin`；改完自动重建 new-api）。其中 `MAGPIE_WEB_KEY` 必须 **≥16 字符**（magpie 硬性要求，过短会导致容器启动即退出）。
 
 ### 状态与证书
 

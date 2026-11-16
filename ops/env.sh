@@ -10,7 +10,8 @@ source "$SCRIPT_DIR/lib.sh"
 require_root
 
 # 允许修改的键（白名单，避免任意 env 注入；改域名/证书相关键请走 reissue 流程）
-ALLOWED_KEYS=(MAGPIE_WEB_KEY MAGPIE_PUBLIC_URL TRAFFIC_QUOTA_GB)
+# NEWAPI_SQL_DSN：Supabase 连接串（改数据库密码时用；值含密码，务必 --stdin）
+ALLOWED_KEYS=(MAGPIE_WEB_KEY MAGPIE_PUBLIC_URL TRAFFIC_QUOTA_GB NEWAPI_SQL_DSN)
 
 usage() {
   echo "用法: clouddock env set KEY[=VALUE] [--svc <服务名>] [--stdin]" >&2
