@@ -66,7 +66,17 @@ case "$sub" in
     exec "$CLOUDDOCK" logs "$svc"
     ;;
   env)
-    [[ "${a[1]:-}" == "set" ]] || deny "仅支持 env set"
+    if [[ "${a[1]:-}" == "check" ]]; then
+      [[ "${#a[@]}" -eq 3 ]] || deny "env check 需且仅需 1 个键名"
+      ckey="${a[2]}"
+      [[ "$ckey" =~ $ENV_KEY_RE ]] || deny "非法 env 键：$ckey"
+      case " $ALLOWED_ENV_KEYS " in
+        *" $ckey "*) ;;
+        *) deny "不允许检查该键：$ckey" ;;
+      esac
+      exec "$CLOUDDOCK" env check "$ckey"
+    fi
+    [[ "${a[1]:-}" == "set" ]] || deny "仅支持 env set|check"
     [[ "${#a[@]}" -ge 3 && "${#a[@]}" -le 6 ]] || deny "env set 参数数量非法"
     key="${a[2]%%=*}"
     [[ "$key" =~ $ENV_KEY_RE ]] || deny "非法 env 键：$key"

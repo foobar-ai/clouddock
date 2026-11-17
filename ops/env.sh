@@ -27,6 +27,44 @@ key_allowed() {
   return 1
 }
 
+# 只读诊断：查看键是否已设置及其特征（不输出值本身）
+if [[ "${1:-}" == "check" ]]; then
+  ckey="${2:-}"
+  [[ -n "$ckey" ]] || usage
+  key_allowed "$ckey" || die "不允许检查该键：$ckey"
+  cval="$(env_get "$ckey" 2>/dev/null || true)"
+  python3 - "$ckey" "$cval" <<'PY'
+import json, re, sys
+key, val = sys.argv[1], sys.argv[2]
+m = re.match(r'^([a-z][a-z0-9+.-]*)://', val)
+print(json.dumps({
+    "key": key,
+    "env_set": bool(val),
+    "length": len(val),
+    "scheme": m.group(1) if m else "",
+    "has_space": (" " in val) or ("\t" in val),
+    "has_dollar": "$" in val,
+    "has_newline": "\n" in val,
+}, ensure_ascii=False, indent=2))
+PY
+  case "$ckey" in
+    NEWAPI_SQL_DSN)           cvar="SQL_DSN";           csvc="new-api" ;;
+    NEWAPI_REDIS_CONN_STRING) cvar="REDIS_CONN_STRING"; csvc="new-api" ;;
+    *)                        cvar="";                  csvc="" ;;
+  esac
+  if [[ -n "$cvar" ]] && docker inspect "$csvc" >/dev/null 2>&1; then
+    cenv="$(docker inspect "$csvc" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+            | sed -n "s/^${cvar}=//p" | head -n1)"
+    python3 - "$cvar" "$cenv" <<'PY'
+import json, sys
+name, val = sys.argv[1], sys.argv[2]
+print(json.dumps({"container_var": name, "container_set": bool(val),
+                  "container_length": len(val)}, ensure_ascii=False, indent=2))
+PY
+  fi
+  exit 0
+fi
+
 [[ "${1:-}" == "set" ]] || usage
 shift
 
