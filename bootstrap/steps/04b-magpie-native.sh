@@ -30,7 +30,7 @@ gateway_ok() {
   command -v uvx >/dev/null 2>&1 || return 1
   systemctl is-active --quiet magpie || return 1
   # 容器→宿主 3425 的转发规则必须覆盖 docker0（host.docker.internal 解析到 172.17.0.1）
-  iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '-i docker0 .*--dport 3425 -j REDIRECT' || return 1
+  iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '-i docker0 .*--dport 3425 -j DNAT --to-destination 127.0.0.1:3425' || return 1
   # 且必须开 route_localnet，否则重定向到 127.0.0.1 的连接会被内核丢弃
   [[ "$(sysctl -n net.ipv4.conf.docker0.route_localnet 2>/dev/null)" == "1" ]] || return 1
   curl -s -o /dev/null -m 5 http://127.0.0.1:3425/v1/models 2>/dev/null
@@ -49,8 +49,10 @@ ensure_bridge_redirect() {
 set -u
 for br in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(br-|docker0)' || true); do
   sysctl -qw "net.ipv4.conf.${br}.route_localnet=1" 2>/dev/null || true
-  iptables -t nat -C PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null \
-    || iptables -t nat -I PREROUTING 1 -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425
+  # 先清掉旧的 REDIRECT 规则（它只会改投到网卡自身 IP，magpie 不监听那里）
+  iptables -t nat -D PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null || true
+  iptables -t nat -C PREROUTING -i "$br" -p tcp --dport 3425 -j DNAT --to-destination 127.0.0.1:3425 2>/dev/null \
+    || iptables -t nat -I PREROUTING 1 -i "$br" -p tcp --dport 3425 -j DNAT --to-destination 127.0.0.1:3425
 done
 EOS
   chmod 755 "$BRIDGE_SCRIPT"
@@ -73,7 +75,7 @@ EOU
   systemctl daemon-reload
   systemctl enable --now magpie-bridge.service >/dev/null 2>&1 || true
   systemctl restart magpie-bridge.service >/dev/null 2>&1 || true
-  if iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '--dport 3425 -j REDIRECT'; then
+  if iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '--dport 3425 -j DNAT --to-destination 127.0.0.1:3425'; then
     ok "容器→宿主 3425 转发规则已就绪（供 new-api 等容器访问网关）"
   else
     warn "未能添加 3425 转发规则（容器可能访问不到 magpie；检查 iptables 权限）"
