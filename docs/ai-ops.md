@@ -67,6 +67,7 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 | `magpie mcp` / `mcp-tools` / `mcp-call` | MCP 端点诊断 | 列 server、列工具、真调一次并计时 |
 | `magpie group [<id>]` | 路由组（只读） | 成员顺序、routing、stays |
 | `recreate <svc>` | 删除容器后按当前 compose 重建 | project/容器漂移时用；数据在卷上不丢 |
+| `net` | 容器 ↔ 宿主可达性（只读） | 容器 IP/网关、compose 网段、3425 监听与 DNAT 规则、容器到网关的实探 |
 | `magpie plugin options <name>` | 读插件配置（只读） | 如 `plugin options model-map` 查映射表 |
 | `magpie probe <model>` | 网关探针 | 真发一次 `max_tokens=8` 请求，回 HTTP 码 + 实际路由到的模型名 |
 | `tools ensure <tool>` | 受控安装工具 | apt 官方源；白名单目前只放行 `tmux` |

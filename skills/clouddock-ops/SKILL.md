@@ -49,6 +49,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 | `magpie search` / `library` | 搜索源 / Library | 命令型 MCP 依赖宿主 node/uvx |
 | `magpie router [on\|off]` | MCP router | on 时把 Library 聚合成 `magpie` 条目写入 agent 配置（自动备份） |
 | `recreate <svc>` | 容器漂移重建 | 删容器后按当前 compose 重建 |
+| `net` | 容器 ↔ 宿主可达性（只读） | 容器 IP/网关、3425 DNAT 规则、容器到 magpie 的实探；排查容器接网关用 |
 | `magpie plugin options <name>` | 读插件配置 | 只读；如 `plugin options model-map` 看映射表 |
 | `magpie probe <model>` | 网关只读探针 | 真发一次 `max_tokens=8` 请求，回 HTTP 码 + 响应摘要 + 网关日志里的实际模型名 |
 | `tools ensure <tool>` | 受控装工具 | apt 官方源；白名单目前仅 `tmux` |

@@ -317,6 +317,40 @@ magpie 不再用容器承载。官方 Docker 镜像是 **gateway-only**：容器
 - **compose 只管 new-api**：`project` 名固定为 `clouddock`（避免增删 compose 文件导致容器名冲突）；容器漂移时用 `clouddock recreate <svc>`。
 - **回滚到容器版**：`git revert` 04b 相关提交并恢复 `services/magpie/`，先 `systemctl disable --now magpie` 再 `docker compose up -d`；旧配置备份在 `/opt/clouddock-data/magpie-backup-*`。
 
+### 容器接入网关（new-api → magpie）
+
+magpie 网关只绑 `127.0.0.1:3425`，而容器里的 `127.0.0.1` 指向容器自身，所以需要「应用层放行 + 网络层转发」两段配合：
+
+| 段 | 做法 |
+| --- | --- |
+| **magpie 侧**（应用层） | 设置 → 局域网 → **局域网共享：开启**；**允许的地址**填 compose 网段（如 `172.20.0.0/16`）。该项对应 `MAGPIE_ALLOW_IPS`：其他地址**即使带网关密钥也 403**，本机始终允许 |
+| **宿主侧**（网络层） | iptables DNAT 把 new-api 容器 IP 发往 `3425` 的流量转到回环，并开 `route_localnet`（由 `04b` 写入 `magpie-bridge.service`，开机重放；升级时幂等收敛） |
+
+new-api 渠道填写：
+
+| 字段 | 值 |
+| --- | --- |
+| 类型 | OpenAI（magpie 提供 `/v1/chat/completions`；也有 Anthropic 的 `/v1/messages`） |
+| 基础 URL | `http://172.20.0.1:3425`（等价 `http://host.docker.internal:3425`） |
+| 密钥 | 专用 gateway key：`clouddock magpie gwkey add newapi`（可单独吊销） |
+| 模型 | `group/free`（路由组名；也可填具体成员如 `groq/qwen/qwen3.8-27b`） |
+
+查看当前容器 IP、DNAT 规则与连通性：
+
+```bash
+bash scripts/clouddock-ops-ssh.sh net
+```
+
+常见错误对照：
+
+| 现象 | 原因 |
+| --- | --- |
+| `Connection refused` | DNAT 规则或 `route_localnet` 缺失（`net` 里看不到 `-s <容器IP> ... DNAT`） |
+| `403 Forbidden` | magpie 未开「局域网共享」，或来源不在「允许的地址」内 |
+| `401` | gateway key 缺失/错误 |
+
+> 安全边界：应用层由 `MAGPIE_ALLOW_IPS` 限定（只允许容器网段 + 本机），网络层由云安全组限定（仅 22/80/443）。开启局域网共享后 3430 会监听所有网卡，如需第三层防护可加 iptables 仅放行 `172.20.0.0/16` 与回环访问 3430。
+
 ## 成本与流量管控
 
 ### 计费规则（以华为云 Flexus L 为例，已查证官方文档）
