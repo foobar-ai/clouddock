@@ -29,6 +29,8 @@ gateway_ok() {
   command -v node >/dev/null 2>&1 || return 1
   command -v uvx >/dev/null 2>&1 || return 1
   systemctl is-active --quiet magpie || return 1
+  # 网关必须同时监听 0.0.0.0:3425（供 new-api 等容器经 host.docker.internal 访问）
+  ss -lntH 2>/dev/null | grep -q '0\.0\.0\.0:3425' || return 1
   curl -s -o /dev/null -m 5 http://127.0.0.1:3425/v1/models 2>/dev/null
 }
 
@@ -116,6 +118,9 @@ User=$AGENT_USER
 Group=$AGENT_USER
 WorkingDirectory=$AGENT_HOME
 EnvironmentFile=$ENV_FILE_MAGPIE
+# 网关监听 0.0.0.0:3425：宿主回环仍可用，同时供 new-api 容器经 host.docker.internal 访问
+# （云安全组只放行 22/80/443，3425 不对公网开放；请求仍需 gateway key）
+Environment=MAGPIE_ADDR=0.0.0.0:3425
 ExecStart=$BIN web --addr 127.0.0.1:3430 --no-open
 Restart=on-failure
 RestartSec=3

@@ -10,6 +10,9 @@ services:
     restart: on-failure:3
     ports:
       - "127.0.0.1:3000:3000"
+    extra_hosts:
+      # 让容器用 host.docker.internal 访问宿主上的 magpie（Linux Docker 需显式声明）
+      - "host.docker.internal:host-gateway"
     environment:
       TZ: Asia/Shanghai
       SQL_DSN: "${NEWAPI_SQL_DSN}"
