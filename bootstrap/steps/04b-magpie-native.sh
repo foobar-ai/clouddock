@@ -130,19 +130,22 @@ WantedBy=multi-user.target
 EOF
   chmod 644 "$UNIT"
   systemctl daemon-reload
-  systemctl enable --now magpie
-  ok "systemd 已启用：magpie.service（User=$AGENT_USER，3425 网关 / 3430 UI，仅 127.0.0.1）"
+  systemctl enable magpie
+  # unit 内容可能变化（如监听地址）：enable --now 对已运行服务不重启，必须 restart
+  systemctl restart magpie
+  ok "systemd 已启用：magpie.service（User=$AGENT_USER，0.0.0.0:3425 网关 / 127.0.0.1:3430 UI）"
 
-  # 6) 等就绪
+  # 6) 等就绪：必须同时在 0.0.0.0:3425 监听（供容器经 host.docker.internal 访问）
   local i
   for i in $(seq 1 30); do
-    if curl -s -o /dev/null -m 3 http://127.0.0.1:3425/v1/models 2>/dev/null; then
-      ok "网关就绪：http://127.0.0.1:3425"
+    if ss -lntH 2>/dev/null | grep -q '0\.0\.0\.0:3425' \
+       && curl -s -o /dev/null -m 3 http://127.0.0.1:3425/v1/models 2>/dev/null; then
+      ok "网关就绪：0.0.0.0:3425（宿主回环与容器网桥均可访问）"
       return 0
     fi
     sleep 1
   done
-  die "magpie 启动后 30s 内未响应 3425（查看 journalctl -u magpie -n 50）"
+  die "magpie 30s 内未监听 0.0.0.0:3425（journalctl -u magpie -n 50 查看）"
 }
 
 run_step "magpie 原生安装与常驻" gateway_ok native_run
