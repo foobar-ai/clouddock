@@ -118,10 +118,9 @@ User=$AGENT_USER
 Group=$AGENT_USER
 WorkingDirectory=$AGENT_HOME
 EnvironmentFile=$ENV_FILE_MAGPIE
-# 网关监听 0.0.0.0:3425：宿主回环仍可用，同时供 new-api 容器经 host.docker.internal 访问
-# （云安全组只放行 22/80/443，3425 不对公网开放；请求仍需 gateway key）
-Environment=MAGPIE_ADDR=0.0.0.0:3425
-ExecStart=$BIN web --addr 127.0.0.1:3430 --no-open
+# --lan：把网关共享到本机网卡（0.0.0.0:3425），供 new-api 等容器经 host.docker.internal 访问；
+# UI 仍只绑回环。云安全组只放行 22/80/443，3425 不对公网开放，且请求仍需 gateway key。
+ExecStart=$BIN web --addr 127.0.0.1:3430 --lan --no-open
 Restart=on-failure
 RestartSec=3
 
