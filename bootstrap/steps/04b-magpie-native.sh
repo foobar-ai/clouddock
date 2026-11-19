@@ -170,7 +170,7 @@ WorkingDirectory=$AGENT_HOME
 EnvironmentFile=$ENV_FILE_MAGPIE
 # magpie web 模式下网关固定绑 127.0.0.1:3425（不读 MAGPIE_ADDR、--lan 只放开 UI），
 # 容器侧访问由下面的 iptables REDIRECT 解决，UI 与网关都保持仅回环。
-ExecStart=$BIN web --addr 127.0.0.1:3430 --no-open
+ExecStart=$BIN web --addr 127.0.0.1:3430 --lan --no-open
 Restart=on-failure
 RestartSec=3
 
