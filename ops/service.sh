@@ -26,6 +26,14 @@ if [[ "$action" == "net" ]]; then
   done
   echo "--- 宿主回环服务监听"
   ss -lntp 2>/dev/null | grep -E ':(3000|3425|3430)\b' || echo "(无)"
+  echo "--- 容器 → 宿主 3425 重定向"
+  iptables -t nat -S PREROUTING 2>/dev/null | grep -- '--dport 3425 -j REDIRECT' || echo "(无规则)"
+  if docker inspect new-api >/dev/null 2>&1; then
+    echo "--- new-api → host.docker.internal:3425"
+    docker exec new-api sh -c 'wget -q -O- -T 3 http://host.docker.internal:3425/v1/models 2>&1 | head -c 200' \
+      2>/dev/null || echo "(探测失败：容器内无 wget 或不可达)"
+    echo
+  fi
   exit 0
 fi
 

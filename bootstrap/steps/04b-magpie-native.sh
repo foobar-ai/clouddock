@@ -29,9 +29,51 @@ gateway_ok() {
   command -v node >/dev/null 2>&1 || return 1
   command -v uvx >/dev/null 2>&1 || return 1
   systemctl is-active --quiet magpie || return 1
-  # 网关必须同时监听 0.0.0.0:3425（供 new-api 等容器经 host.docker.internal 访问）
-  ss -lntH 2>/dev/null | grep -q '0\.0\.0\.0:3425' || return 1
+  # 容器→宿主 3425 的转发规则必须存在（new-api 经 host.docker.internal 访问）
+  iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '--dport 3425 -j REDIRECT' || return 1
   curl -s -o /dev/null -m 5 http://127.0.0.1:3425/v1/models 2>/dev/null
+}
+
+# 容器访问宿主 127.0.0.1:3425：magpie 只绑回环，用 nat REDIRECT 把来自 docker 网桥的
+# 3425 流量改投本机 3425。规则重启会丢，用 oneshot unit 在开机时重放。
+BRIDGE_SCRIPT="/usr/local/bin/clouddock-magpie-bridge.sh"
+BRIDGE_UNIT="/etc/systemd/system/magpie-bridge.service"
+
+ensure_bridge_redirect() {
+  cat > "$BRIDGE_SCRIPT" <<'EOS'
+#!/usr/bin/env bash
+# 把来自 docker 网桥、目的 3425 的流量重定向到宿主 127.0.0.1:3425（magpie 网关）
+set -u
+br="$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -m1 '^br-' || true)"
+[[ -n "$br" ]] || exit 0
+iptables -t nat -C PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null \
+  || iptables -t nat -I PREROUTING 1 -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425
+EOS
+  chmod 755 "$BRIDGE_SCRIPT"
+
+  cat > "$BRIDGE_UNIT" <<'EOU'
+[Unit]
+Description=Redirect docker bridge :3425 to magpie loopback
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/clouddock-magpie-bridge.sh
+
+[Install]
+WantedBy=multi-user.target
+EOU
+  chmod 644 "$BRIDGE_UNIT"
+  systemctl daemon-reload
+  systemctl enable --now magpie-bridge.service >/dev/null 2>&1 || true
+  systemctl restart magpie-bridge.service >/dev/null 2>&1 || true
+  if iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '--dport 3425 -j REDIRECT'; then
+    ok "容器→宿主 3425 转发规则已就绪（供 new-api 等容器访问网关）"
+  else
+    warn "未能添加 3425 转发规则（容器可能访问不到 magpie；检查 iptables 权限）"
+  fi
 }
 
 # 原生 magpie 跑在宿主上，Library 里 npx/uvx 型 MCP server 用宿主运行时
@@ -57,6 +99,8 @@ native_run() {
 
   # 0) 宿主运行时（npx / uvx 型 MCP server 依赖）
   ensure_runtimes
+  # 容器访问网关（docker 网桥 :3425 → 宿主回环）
+  ensure_bridge_redirect
 
   # 1) 先备份并下线旧容器（释放 3425/3430，且避免迁移时的并发写）
   if docker ps -a --format '{{.Names}}' | grep -qx magpie; then
@@ -118,9 +162,9 @@ User=$AGENT_USER
 Group=$AGENT_USER
 WorkingDirectory=$AGENT_HOME
 EnvironmentFile=$ENV_FILE_MAGPIE
-# --lan：把网关共享到本机网卡（0.0.0.0:3425），供 new-api 等容器经 host.docker.internal 访问；
-# UI 仍只绑回环。云安全组只放行 22/80/443，3425 不对公网开放，且请求仍需 gateway key。
-ExecStart=$BIN web --addr 127.0.0.1:3430 --lan --no-open
+# magpie web 模式下网关固定绑 127.0.0.1:3425（不读 MAGPIE_ADDR、--lan 只放开 UI），
+# 容器侧访问由下面的 iptables REDIRECT 解决，UI 与网关都保持仅回环。
+ExecStart=$BIN web --addr 127.0.0.1:3430 --no-open
 Restart=on-failure
 RestartSec=3
 
