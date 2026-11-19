@@ -196,11 +196,7 @@ EOF
   local i
   for i in $(seq 1 30); do
     if curl -s -o /dev/null -m 3 http://127.0.0.1:3425/v1/models 2>/dev/null; then
-      if ss -lntH 2>/dev/null | grep -q '0\.0\.0\.0:3425'; then
-        ok "网关就绪：0.0.0.0:3425（宿主回环与容器网桥均可访问）"
-      else
-        warn "网关仅监听 127.0.0.1:3425 —— 容器（new-api）无法访问；需确认 magpie 的监听参数"
-      fi
+      ok "网关就绪：127.0.0.1:3425（容器经 iptables DNAT 按需访问）"
       return 0
     fi
     sleep 1
