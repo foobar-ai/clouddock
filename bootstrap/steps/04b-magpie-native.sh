@@ -43,8 +43,10 @@ ensure_bridge_redirect() {
   cat > "$BRIDGE_SCRIPT" <<'EOS'
 #!/usr/bin/env bash
 # 把来自任意 docker 网桥（br-* 与 docker0）、目的 3425 的流量重定向到宿主 127.0.0.1:3425
+# 必须同时开 route_localnet，否则内核会丢弃「非本机源 → 127.0.0.1」的连接
 set -u
 for br in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(br-|docker0)' || true); do
+  sysctl -qw "net.ipv4.conf.${br}.route_localnet=1" 2>/dev/null || true
   iptables -t nat -C PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null \
     || iptables -t nat -I PREROUTING 1 -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425
 done
