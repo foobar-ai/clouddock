@@ -34,9 +34,17 @@ if [[ "$action" == "net" ]]; then
     docker exec new-api sh -c 'wget -S -O- -T 3 http://host.docker.internal:3425/api/hello 2>&1 | tail -4' \
       2>/dev/null || echo "(不可达)"
     if [[ -n "$gw" ]]; then
-      echo "--- new-api → 网络网关 ${gw}:3425"
+      echo "--- new-api → 网络网关 ${gw}:3425（/api/hello）"
       docker exec new-api sh -c "wget -S -O- -T 3 http://${gw}:3425/api/hello 2>&1 | tail -4" \
         2>/dev/null || echo "(不可达)"
+      mkey="$(env_get MAGPIE_GATEWAY_KEY 2>/dev/null || true)"
+      if [[ -n "$mkey" ]]; then
+        echo "--- new-api → ${gw}:3425/v1/models（带 gateway key）"
+        docker exec -e MK="$mkey" new-api sh -c \
+          "wget -q -O- -T 5 --header=\"Authorization: Bearer \$MK\" http://${gw}:3425/v1/models 2>&1 | head -c 240" \
+          2>/dev/null || echo "(不可达)"
+        echo
+      fi
     fi
     echo
   fi
