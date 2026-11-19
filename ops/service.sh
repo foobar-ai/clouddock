@@ -29,8 +29,8 @@ if [[ "$action" == "net" ]]; then
   echo "--- 容器 → 宿主 3425 重定向"
   iptables -t nat -S PREROUTING 2>/dev/null | grep -- '--dport 3425 -j REDIRECT' || echo "(无规则)"
   if docker inspect new-api >/dev/null 2>&1; then
-    echo "--- new-api → host.docker.internal:3425"
-    docker exec new-api sh -c 'wget -q -O- -T 3 http://host.docker.internal:3425/v1/models 2>&1 | head -c 200' \
+    echo "--- new-api → host.docker.internal:3425（/api/hello，无需 key）"
+    docker exec new-api sh -c 'wget -S -O- -T 3 http://host.docker.internal:3425/api/hello 2>&1 | tail -6' \
       2>/dev/null || echo "(探测失败：容器内无 wget 或不可达)"
     echo
   fi
