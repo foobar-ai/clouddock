@@ -42,12 +42,12 @@ BRIDGE_UNIT="/etc/systemd/system/magpie-bridge.service"
 ensure_bridge_redirect() {
   cat > "$BRIDGE_SCRIPT" <<'EOS'
 #!/usr/bin/env bash
-# 把来自 docker 网桥、目的 3425 的流量重定向到宿主 127.0.0.1:3425（magpie 网关）
+# 把来自任意 docker 网桥（br-* 与 docker0）、目的 3425 的流量重定向到宿主 127.0.0.1:3425
 set -u
-br="$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -m1 '^br-' || true)"
-[[ -n "$br" ]] || exit 0
-iptables -t nat -C PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null \
-  || iptables -t nat -I PREROUTING 1 -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425
+for br in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(br-|docker0)' || true); do
+  iptables -t nat -C PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null \
+    || iptables -t nat -I PREROUTING 1 -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425
+done
 EOS
   chmod 755 "$BRIDGE_SCRIPT"
 
