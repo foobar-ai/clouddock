@@ -31,6 +31,8 @@ gateway_ok() {
   systemctl is-active --quiet magpie || return 1
   # 容器→宿主 3425 的转发规则必须覆盖 docker0（host.docker.internal 解析到 172.17.0.1）
   iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '-i docker0 .*--dport 3425 -j REDIRECT' || return 1
+  # 且必须开 route_localnet，否则重定向到 127.0.0.1 的连接会被内核丢弃
+  [[ "$(sysctl -n net.ipv4.conf.docker0.route_localnet 2>/dev/null)" == "1" ]] || return 1
   curl -s -o /dev/null -m 5 http://127.0.0.1:3425/v1/models 2>/dev/null
 }
 
