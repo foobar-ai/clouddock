@@ -49,6 +49,10 @@ case "$sub" in
     [[ "$svc" =~ $SVC_RE ]] || deny "非法服务名：$svc"
     exec "$CLOUDDOCK" restart "$svc"
     ;;
+  net)
+    [[ "${#a[@]}" -eq 1 ]] || deny "net 不接受参数"
+    exec "$CLOUDDOCK" net
+    ;;
   up|start|stop|pull|recreate)
     [[ "${#a[@]}" -eq 2 ]] || deny "$sub 需且仅需 1 个服务名"
     svc="${a[1]}"

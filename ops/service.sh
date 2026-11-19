@@ -10,7 +10,25 @@ require_root
 
 action="${1:-}"
 svc="${2:-}"
-[[ -n "$action" ]] || die "用法: clouddock <up|start|stop|pull|recreate> <服务名>"
+[[ -n "$action" ]] || die "用法: clouddock <up|start|stop|pull|recreate> <服务名> | net"
+
+# 只读：容器 ↔ 宿主的可达地址（跨容器访问宿主上的服务时需要）
+if [[ "$action" == "net" ]]; then
+  echo "--- 容器与网关 IP"
+  local_c=""
+  for local_c in $(svc_names 2>/dev/null); do
+    docker inspect "$local_c" --format '{{.Name}} {{range $k,$v := .NetworkSettings.Networks}}{{$k}} ip={{$v.IPAddress}} gw={{$v.Gateway}}{{end}}' 2>/dev/null || true
+  done
+  echo "--- compose 网络"
+  for local_n in $(docker network ls --format '{{.Name}}' 2>/dev/null | grep -E '^clouddock_'); do
+    printf '%s ' "$local_n"
+    docker network inspect "$local_n" --format '{{range .IPAM.Config}}subnet={{.Subnet}} gw={{.Gateway}}{{end}}' 2>/dev/null || true
+  done
+  echo "--- 宿主回环服务监听"
+  ss -lntp 2>/dev/null | grep -E ':(3000|3425|3430)\b' || echo "(无)"
+  exit 0
+fi
+
 require_svc "$svc"
 
 compose_files
