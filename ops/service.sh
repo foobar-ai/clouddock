@@ -27,7 +27,7 @@ if [[ "$action" == "net" ]]; then
   echo "--- 宿主回环服务监听"
   ss -lntp 2>/dev/null | grep -E ':(3000|3425|3430)\b' || echo "(无)"
   echo "--- 容器 → 宿主 3425 重定向"
-  iptables -t nat -S PREROUTING 2>/dev/null | grep -- '--dport 3425 -j REDIRECT' || echo "(无规则)"
+  iptables -t nat -S PREROUTING 2>/dev/null | grep -- '--dport 3425 -j DNAT' || echo "(无规则)"
   if docker inspect new-api >/dev/null 2>&1; then
     gw="$(docker inspect new-api --format '{{range $k,$v := .NetworkSettings.Networks}}{{$v.Gateway}}{{end}}' 2>/dev/null)"
     echo "--- new-api → host.docker.internal:3425"

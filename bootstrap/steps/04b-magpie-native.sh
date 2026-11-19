@@ -29,8 +29,9 @@ gateway_ok() {
   command -v node >/dev/null 2>&1 || return 1
   command -v uvx >/dev/null 2>&1 || return 1
   systemctl is-active --quiet magpie || return 1
-  # 容器→宿主 3425 的转发规则必须覆盖 docker0（host.docker.internal 解析到 172.17.0.1）
-  iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '-i docker0 .*--dport 3425 -j DNAT --to-destination 127.0.0.1:3425' || return 1
+  # 仅 new-api 源 IP 的 DNAT 规则必须存在（不按网桥放大）
+  iptables -t nat -S PREROUTING 2>/dev/null \
+    | grep -q -- '-s .*/32 .*--dport 3425 -j DNAT --to-destination 127.0.0.1:3425' || return 1
   # 且必须开 route_localnet，否则重定向到 127.0.0.1 的连接会被内核丢弃
   [[ "$(sysctl -n net.ipv4.conf.docker0.route_localnet 2>/dev/null)" == "1" ]] || return 1
   curl -s -o /dev/null -m 5 http://127.0.0.1:3425/v1/models 2>/dev/null
@@ -44,16 +45,23 @@ BRIDGE_UNIT="/etc/systemd/system/magpie-bridge.service"
 ensure_bridge_redirect() {
   cat > "$BRIDGE_SCRIPT" <<'EOS'
 #!/usr/bin/env bash
-# 把来自任意 docker 网桥（br-* 与 docker0）、目的 3425 的流量重定向到宿主 127.0.0.1:3425
-# 必须同时开 route_localnet，否则内核会丢弃「非本机源 → 127.0.0.1」的连接
+# 仅放行 new-api 容器（按当前容器 IP）访问宿主 127.0.0.1:3425 —— magpie 网关只绑回环
 set -u
+cid="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' new-api 2>/dev/null)"
+[[ -n "$cid" ]] || exit 0
+
+# 幂等：先删本容器的旧规则
+while iptables -t nat -D PREROUTING -s "${cid}/32" -p tcp --dport 3425 -j DNAT --to-destination 127.0.0.1:3425 2>/dev/null; do :; done
+
+# 一次性收敛：清理历史上按网桥的宽规则，并只在需要的接口开 route_localnet
 for br in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(br-|docker0)' || true); do
+  while iptables -t nat -D PREROUTING -i "$br" -p tcp --dport 3425 -j DNAT --to-destination 127.0.0.1:3425 2>/dev/null; do :; done
+  while iptables -t nat -D PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null; do :; done
   sysctl -qw "net.ipv4.conf.${br}.route_localnet=1" 2>/dev/null || true
-  # 先清掉旧的 REDIRECT 规则（它只会改投到网卡自身 IP，magpie 不监听那里）
-  iptables -t nat -D PREROUTING -i "$br" -p tcp --dport 3425 -j REDIRECT --to-ports 3425 2>/dev/null || true
-  iptables -t nat -C PREROUTING -i "$br" -p tcp --dport 3425 -j DNAT --to-destination 127.0.0.1:3425 2>/dev/null \
-    || iptables -t nat -I PREROUTING 1 -i "$br" -p tcp --dport 3425 -j DNAT --to-destination 127.0.0.1:3425
 done
+
+# 仅 new-api 源地址可达网关
+iptables -t nat -I PREROUTING 1 -s "${cid}/32" -p tcp --dport 3425 -j DNAT --to-destination 127.0.0.1:3425
 EOS
   chmod 755 "$BRIDGE_SCRIPT"
 
@@ -75,8 +83,8 @@ EOU
   systemctl daemon-reload
   systemctl enable --now magpie-bridge.service >/dev/null 2>&1 || true
   systemctl restart magpie-bridge.service >/dev/null 2>&1 || true
-  if iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '--dport 3425 -j DNAT --to-destination 127.0.0.1:3425'; then
-    ok "容器→宿主 3425 转发规则已就绪（供 new-api 等容器访问网关）"
+  if iptables -t nat -S PREROUTING 2>/dev/null | grep -q -- '-s .*/32 .*--dport 3425 -j DNAT --to-destination 127.0.0.1:3425'; then
+    ok "已放行 new-api 容器访问网关 3425（按容器 IP 精确匹配，未放开监听）"
   else
     warn "未能添加 3425 转发规则（容器可能访问不到 magpie；检查 iptables 权限）"
   fi
@@ -170,7 +178,7 @@ WorkingDirectory=$AGENT_HOME
 EnvironmentFile=$ENV_FILE_MAGPIE
 # magpie web 模式下网关固定绑 127.0.0.1:3425（不读 MAGPIE_ADDR、--lan 只放开 UI），
 # 容器侧访问由下面的 iptables REDIRECT 解决，UI 与网关都保持仅回环。
-ExecStart=$BIN web --addr 127.0.0.1:3430 --lan --no-open
+ExecStart=$BIN web --addr 127.0.0.1:3430 --no-open
 Restart=on-failure
 RestartSec=3
 
