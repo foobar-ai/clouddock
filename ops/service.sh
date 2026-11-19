@@ -41,7 +41,7 @@ if [[ "$action" == "net" ]]; then
       if [[ -n "$mkey" ]]; then
         echo "--- new-api → ${gw}:3425/v1/models（带 gateway key）"
         docker exec -e MK="$mkey" new-api sh -c \
-          "wget -q -O- -T 5 --header=\"Authorization: Bearer \$MK\" http://${gw}:3425/v1/models 2>&1 | head -c 240" \
+          "wget -S -O- -T 5 --header=\"Authorization: Bearer \$MK\" http://${gw}:3425/v1/models 2>&1 | head -8" \
           2>/dev/null || echo "(不可达)"
         echo
       fi
