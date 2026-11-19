@@ -161,6 +161,12 @@ case "$sub" in
     if [[ "${a[1]:-}" == "runtime" && "${#a[@]}" -eq 2 ]]; then
       exec "$CLOUDDOCK" magpie runtime
     fi
+    if [[ "${a[1]:-}" == "help" && "${#a[@]}" -eq 3 ]]; then
+      case "${a[2]}" in
+        web|serve|gateway) exec "$CLOUDDOCK" magpie help "${a[2]}" ;;
+        *) deny "magpie help 仅支持 web|serve|gateway" ;;
+      esac
+    fi
     if [[ "${a[1]:-}" == "files" && "${#a[@]}" -eq 2 ]]; then
       exec "$CLOUDDOCK" magpie files
     fi

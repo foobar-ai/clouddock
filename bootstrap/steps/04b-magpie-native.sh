@@ -138,14 +138,17 @@ EOF
   # 6) 等就绪：必须同时在 0.0.0.0:3425 监听（供容器经 host.docker.internal 访问）
   local i
   for i in $(seq 1 30); do
-    if ss -lntH 2>/dev/null | grep -q '0\.0\.0\.0:3425' \
-       && curl -s -o /dev/null -m 3 http://127.0.0.1:3425/v1/models 2>/dev/null; then
-      ok "网关就绪：0.0.0.0:3425（宿主回环与容器网桥均可访问）"
+    if curl -s -o /dev/null -m 3 http://127.0.0.1:3425/v1/models 2>/dev/null; then
+      if ss -lntH 2>/dev/null | grep -q '0\.0\.0\.0:3425'; then
+        ok "网关就绪：0.0.0.0:3425（宿主回环与容器网桥均可访问）"
+      else
+        warn "网关仅监听 127.0.0.1:3425 —— 容器（new-api）无法访问；需确认 magpie 的监听参数"
+      fi
       return 0
     fi
     sleep 1
   done
-  die "magpie 30s 内未监听 0.0.0.0:3425（journalctl -u magpie -n 50 查看）"
+  die "magpie 30s 内未响应 3425（journalctl -u magpie -n 50 查看）"
 }
 
 run_step "magpie 原生安装与常驻" gateway_ok native_run

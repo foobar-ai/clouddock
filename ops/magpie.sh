@@ -143,6 +143,14 @@ case "$group" in
     echo "--- 端口"
     ss -lntp 2>/dev/null | grep -E ':(3425|3430)\b' || echo "(3425/3430 未监听)"
     ;;
+  help)
+    # 只读：查看子命令帮助（确认监听地址参数）
+    hsub="${1:-}"
+    case "$hsub" in
+      web|serve|gateway) su - agent -c "\"$MAGPIE_BIN\" $hsub --help" 2>&1 | head -40 ;;
+      *) usage ;;
+    esac
+    ;;
   runtime)
     # 只读：原生 magpie 依赖的宿主运行时（命令型 MCP server 全靠它们）
     for c in node npx bun uv uvx python3 git; do
