@@ -239,6 +239,7 @@ bash scripts/clouddock-ops-ssh.sh reload                       # 重载 OpenRest
 1. **公网最小暴露**：安全组仅放行 22 / 80 / 443；magpie 的 3425/3430 只绑定 127.0.0.1，经 SSH 隧道访问，不暴露公网。
 2. **云主机加固（可选）**：建议使用密钥登录，并在确认无误后关闭密码登录（编辑 `/etc/ssh/sshd_config`，设置 `PasswordAuthentication no` 后 `systemctl restart ssh`）。
 3. **下载源**：所有软件与镜像均来自官方/可信渠道，且必须是该渠道当前推荐、未过时的安装方式（如 Claude Code 用官方原生安装器 `curl -fsSL https://claude.ai/install.sh | bash`，不用已废弃的 npm 方式）；不引入第三方镜像站。详见 `AGENTS.md`。
+4. **HTTP/2 已临时关闭（2026-11-20 安全缓解）**：nginx 于 2026-11-18 披露 nginx2root 漏洞链（CVE-2026-123007 HTTP/2 流控内存破坏、CVE-2026-123633 HTTP/2+反代 use-after-free，CVSS 9.2，未认证即可打崩 worker，RCE 需特定条件）。本站点 443 同时开了 HTTP/2 且用 `proxy_pass` 反代，两条命中；另外三条（HTTP/3、resolver、mail proxy）本项目均未启用，不受影响。因 OpenResty 尚未发布含 nginx 1.31.9/1.30.7 修复的版本，`openresty/sites/new-api-https.conf` 已注释掉 `http2 on;`，退化为 HTTP/1.1（功能与流式不受影响，仅少一点多路复用收益）。恢复条件：openresty 官方源出现修复版后，调整 `bootstrap/steps/02-openresty.sh` 的 `OPENRESTY_VER` 与 `apt-mark hold`（注意 bookworm 包与 libssl3 3.0 的兼容性），`clouddock upgrade` 后把该行改回 `http2 on;` 再次 `upgrade`。
 
 ## 目录结构
 

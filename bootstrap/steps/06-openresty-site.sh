@@ -11,7 +11,13 @@ require_root
 DOMAIN="$(cfg NEWAPI_DOMAIN '')"
 
 site_done() {
-  grep -q 'listen 443 ssl' "$OPENRESTY_SITES_DIR/new-api.conf" 2>/dev/null
+  local rendered="$OPENRESTY_SITES_DIR/new-api.conf"
+  [[ -f "$rendered" ]] || return 1
+  grep -q 'listen 443 ssl' "$rendered" || return 1
+  [[ -n "$DOMAIN" ]] || return 0
+  # 逐字节比对模板渲染结果：站点配置的变更（如关闭 HTTP/2 的安全缓解）才能随 upgrade 落到 VPS，
+  # 而不是被「已存在 listen 443 ssl」的标记式判定跳过。
+  diff -q <(sed "s/__DOMAIN__/${DOMAIN}/g" "$DEPLOY_DIR/openresty/sites/new-api-https.conf") "$rendered" >/dev/null 2>&1
 }
 
 site_run() {
