@@ -82,7 +82,7 @@ bash scripts/clouddock-ops-ssh.sh status   # 应输出 JSON，且不再要密码
 
 | 子命令 | 作用 |
 | --- | --- |
-| `status` | 巡检 JSON（容器/证书/流量/磁盘/git） |
+| `status` | 巡检 JSON（容器/证书/流量/磁盘/git/OpenResty 版本） |
 | `health` | 写 `/opt/clouddock-data/health.json`（cron 每天 0/12 点） |
 | `renew` | `acme.sh --cron`（到期才续，幂等） |
 | `reissue` | 强制重签（切换 http↔dns） |

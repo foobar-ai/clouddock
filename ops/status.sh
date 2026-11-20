@@ -11,6 +11,11 @@ OPS_DOMAIN="$(cfg NEWAPI_DOMAIN '')"
 OPS_QUOTA_GB="$(cfg TRAFFIC_QUOTA_GB '1024')"
 OPS_GIT_BRANCH="$(git -C "$DEPLOY_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
 OPS_GIT_COMMIT="$(git -C "$DEPLOY_DIR" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+# OpenResty 版本：openresty -v 输出 "nginx version: openresty/x.y.z.w"（前三位即内置 nginx core 版本）
+OPS_OPENRESTY_VERSION=""
+if have openresty; then
+  OPS_OPENRESTY_VERSION="$(openresty -v 2>&1 | sed -n 's|^nginx version: openresty/||p' | head -n1)"
+fi
 OPS_CERT_END=""
 if [[ -f "$CERT_DIR/fullchain.cer" ]]; then
   OPS_CERT_END="$(openssl x509 -enddate -noout -in "$CERT_DIR/fullchain.cer" 2>/dev/null | sed 's/^notAfter=//' || true)"
@@ -19,7 +24,7 @@ OPS_CONTAINERS="$(docker ps -a --format '{{.Names}}\t{{.State}}\t{{.Status}}' 2>
 OPS_VNSTAT="$(vnstat --json m 2>/dev/null || true)"
 OPS_DISK="$(df -Pk / 2>/dev/null || true)"
 
-export OPS_DOMAIN OPS_QUOTA_GB OPS_GIT_BRANCH OPS_GIT_COMMIT OPS_CERT_END OPS_CONTAINERS OPS_VNSTAT OPS_DISK
+export OPS_DOMAIN OPS_QUOTA_GB OPS_GIT_BRANCH OPS_GIT_COMMIT OPS_OPENRESTY_VERSION OPS_CERT_END OPS_CONTAINERS OPS_VNSTAT OPS_DISK
 
 python3 <<'PY'
 import os, json
@@ -108,6 +113,7 @@ if len(lines) >= 2:
 out = {
     "ts": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
     "git": git,
+    "openresty_version": env('OPS_OPENRESTY_VERSION'),
     "cert": cert,
     "containers": containers,
     "traffic": traffic,

@@ -64,7 +64,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 
 | 子命令 | 作用 |
 | --- | --- |
-| `status` | 巡检 JSON（容器/证书/流量/磁盘/git） |
+| `status` | 巡检 JSON（容器/证书/流量/磁盘/git/OpenResty 版本） |
 | `health` | 写健康快照 `/opt/clouddock-data/health.json` |
 | `renew` | 续期证书（acme.sh --cron） |
 | `reissue` | 强制重签（切换 http↔dns） |
@@ -98,6 +98,7 @@ bash scripts/clouddock-ops-ssh.sh <子命令> [参数]
 - `containers[].state != running` 或 `health == unhealthy` → `restart <svc>`；仍异常则 `logs <svc>` 排查。
 - `traffic.pct >= 90` → 流量告警，提醒用户关注 `vnstat -m`（tx）与云厂商账单。
 - `disk.used_pct >= 85` → 磁盘告警，提示清理（`docker system prune` 等，先向用户确认）。
+- `openresty_version`：`x.y.z.w` 的前三位即内置 nginx core 版本（如 `1.27.1.2` → nginx 1.27.1）。用户报 nginx 漏洞时用它做版本比对；OpenResty 未发修复版时只能按配置缓解（如关闭 HTTP/2）。
 
 ## 安装新服务
 
